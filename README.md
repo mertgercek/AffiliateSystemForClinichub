@@ -212,4 +212,4 @@ MIT License
 
 ## Support
 For support and inquiries, please contact:
-support@clinichub.com
+mert.gercek@clinichub.com
