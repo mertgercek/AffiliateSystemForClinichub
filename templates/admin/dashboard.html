@@ -38,7 +38,7 @@
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Total Commissions</h5>
-                    <h2 class="card-text">${{ analytics.total_commissions|round(2) }}</h2>
+                    <h2 class="card-text">${{ analytics.total_commission|round(2) }}</h2>
                     <p class="text-muted">Issued to affiliates</p>
                 </div>
             </div>
@@ -87,7 +87,6 @@
                             <th>Affiliate</th>
                             <th>Total Referrals</th>
                             <th>Completed</th>
-                            <th>Commission Rate</th>
                             <th>Total Earnings</th>
                             <th>Actions</th>
                         </tr>
@@ -98,17 +97,6 @@
                             <td>{{ affiliate.user.username }}</td>
                             <td>{{ total }}</td>
                             <td>{{ completed }}</td>
-                            <td>
-                                <form method="POST" action="{{ url_for('admin.update_commission_rate', id=affiliate.id) }}" 
-                                      class="commission-form">
-                                    <div class="input-group input-group-sm">
-                                        <input type="number" class="form-control" name="commission_rate" 
-                                               value="{{ affiliate.commission_rate }}" step="0.01" min="0" max="100">
-                                        <span class="input-group-text">%</span>
-                                        <button type="submit" class="btn btn-secondary">Update</button>
-                                    </div>
-                                </form>
-                            </td>
                             <td>${{ affiliate.total_earnings|round(2) }}</td>
                             <td>
                                 <a href="{{ url_for('admin.affiliate_details', id=affiliate.id) }}" 
@@ -123,8 +111,61 @@
     </div>
 
     <!-- Pending Affiliates and Recent Referrals -->
-    {% include "admin/_pending_affiliates.html" %}
     {% include "admin/_recent_referrals.html" %}
+
+    <!-- Replace the country stats table section -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="mb-0">Top Countries</h3>
+            <a href="{{ url_for('admin.country_stats') }}" class="btn btn-sm btn-primary">
+                <i class="bi bi-map"></i> View All Countries
+            </a>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Country</th>
+                            <th>Total Referrals</th>
+                            <th>Completed</th>
+                            <th>Completion Rate</th>
+                            <th>Total Commission</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stat in country_stats[:5] %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <img src="https://flagcdn.com/24x18/{{ stat.country.lower() }}.png" 
+                                         alt="{{ stat.country }}" class="me-2">
+                                    {% for country in countries %}
+                                        {% if country.code == stat.country %}
+                                            {{ country.name }}
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td>{{ stat.total_referrals }}</td>
+                            <td>{{ stat.completed_referrals }}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="progress flex-grow-1 me-2" style="height: 6px;">
+                                        <div class="progress-bar bg-success" 
+                                             style="width: {{ stat.completion_rate }}%"></div>
+                                    </div>
+                                    <span class="text-muted small">{{ "%.1f"|format(stat.completion_rate) }}%</span>
+                                </div>
+                            </td>
+                            <td>${{ "%.2f"|format(stat.total_commission) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Hidden analytics data for JavaScript -->
@@ -135,5 +176,79 @@
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="{{ url_for('static', filename='js/analytics.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Get analytics data from the hidden element
+    const analyticsData = JSON.parse(document.getElementById('analytics-data').textContent);
+    
+    // Status Distribution Chart
+    const statusCtx = document.getElementById('referralTrends').getContext('2d');
+    new Chart(statusCtx, {
+        type: 'pie',
+        data: {
+            labels: ['New', 'In Progress', 'Completed'],
+            datasets: [{
+                data: [
+                    analyticsData.status_counts.new,
+                    analyticsData.status_counts['in-progress'],
+                    analyticsData.status_counts.completed
+                ],
+                backgroundColor: [
+                    'rgb(54, 162, 235)',  // Blue for new
+                    'rgb(255, 205, 86)',  // Yellow for in-progress
+                    'rgb(75, 192, 192)'   // Green for completed
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                title: {
+                    display: true,
+                    text: 'Referral Status Distribution'
+                }
+            }
+        }
+    });
+
+    // Commission Distribution Chart
+    const commissionCtx = document.getElementById('commissionDistribution').getContext('2d');
+    new Chart(commissionCtx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(analyticsData.commission_distribution),
+            datasets: [{
+                label: 'Monthly Commission ($)',
+                data: Object.values(analyticsData.commission_distribution),
+                backgroundColor: 'rgb(75, 192, 192)'
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value;
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                title: {
+                    display: true,
+                    text: 'Monthly Commission Distribution'
+                }
+            }
+        }
+    });
+});
+</script>
 {% endblock %}

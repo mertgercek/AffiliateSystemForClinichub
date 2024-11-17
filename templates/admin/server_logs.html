@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Server Error Logs{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Server Error Logs</h2>
+        <button class="btn btn-secondary" onclick="clearLogs()">Clear Logs</button>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="logs-container" style="height: 600px; overflow-y: auto; background: #1e1e1e; padding: 1rem;">
+                <pre id="logContent" class="mb-0 text-light"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let lastLogId = 0;
+
+function fetchLogs() {
+    fetch('/admin/api/logs?last_id=' + lastLogId)
+        .then(response => response.json())
+        .then(data => {
+            const logContent = document.getElementById('logContent');
+            if (lastLogId === 0) {
+                logContent.innerHTML = '';
+            }
+            
+            data.logs.forEach(log => {
+                const logEntry = document.createElement('div');
+                logEntry.className = 'log-entry error';
+                logEntry.innerHTML = `<span class="timestamp">${log.timestamp}</span> ${log.message}`;
+                logContent.appendChild(logEntry);
+                lastLogId = Math.max(lastLogId, log.id);
+            });
+
+            // Auto-scroll to bottom if already at bottom
+            const container = document.querySelector('.logs-container');
+            if (container.scrollTop + container.clientHeight === container.scrollHeight) {
+                container.scrollTop = container.scrollHeight;
+            }
+        });
+}
+
+function clearLogs() {
+    if (confirm('Are you sure you want to clear all logs?')) {
+        fetch('/admin/api/logs/clear', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('logContent').innerHTML = '';
+                    lastLogId = 0;
+                }
+            });
+    }
+}
+
+// Initial load and periodic updates
+fetchLogs();
+setInterval(fetchLogs, 5000);
+</script>
+
+<style>
+.logs-container {
+    font-family: 'Consolas', 'Monaco', monospace;
+}
+.log-entry {
+    font-family: inherit;
+    white-space: pre-wrap;
+    margin-bottom: 2px;
+    padding: 2px 0;
+}
+.log-entry.error { color: #ff6b6b; }
+.timestamp {
+    color: #95a5a6;
+    margin-right: 10px;
+}
+</style>
+{% endblock %} 

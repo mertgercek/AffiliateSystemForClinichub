@@ -1,0 +1,6 @@
+2024-11-18 00:25:42,007 - Test error message
+2024-11-18 00:25:42,008 - Another test error message
+2024-11-18 00:26:01,759 - Error sending email: No subaccount exists with the id 'clinichub-main'
+2024-11-18 00:47:11,382 - Error during registration: 'request' is undefined
+2024-11-18 00:48:52,324 - Error sending email: Could not build url for endpoint 'auth.unsubscribe' with values ['token']. Did you mean 'auth.verify_email' instead?
+2024-11-18 00:48:52,324 - Failed to send verification email to mert.gercek@clinichub.com

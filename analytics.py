@@ -1,122 +1,89 @@
 from datetime import datetime, timedelta
-from sqlalchemy import func, case, extract, text
+from sqlalchemy import func, case, extract, text, and_
 from models import User, Referral, Treatment, Affiliate, Treatment_Status, TreatmentGroup
 from extensions import db
 
-def get_conversion_metrics(affiliate_id=None, start_date=None, end_date=None):
-    if not end_date:
-        end_date = datetime.utcnow()
-    if not start_date:
-        start_date = end_date - timedelta(days=30)
+def get_conversion_metrics(start_date=None, end_date=None):
+    """Get conversion metrics and analytics data with optional date filtering"""
+    from models import Referral, Treatment
+    from sqlalchemy import func, case, extract
+    from datetime import datetime
     
-    # Base query for referrals within date range
-    base_query = Referral.query.filter(
-        Referral.created_at.between(start_date, end_date)
-    )
+    # Base query
+    query = Referral.query
     
-    # Add affiliate filter if specified
-    if affiliate_id:
-        base_query = base_query.filter(Referral.affiliate_id == affiliate_id)
+    # Apply date filters if provided
+    if start_date and end_date:
+        query = query.filter(
+            and_(
+                Referral.created_at >= start_date,
+                Referral.created_at <= end_date
+            )
+        )
     
-    # Total referrals
-    total_referrals = base_query.count()
+    # Get total referrals
+    total_referrals = query.count()
     
-    # Total commissions paid
-    total_commissions = db.session.query(
-        func.sum(Referral.commission_amount)
+    # Get status counts with proper initialization
+    status_counts = {
+        'new': 0,
+        'in-progress': 0,
+        'completed': 0
+    }
+    
+    # Update with actual counts
+    status_query = db.session.query(
+        Referral.status,
+        func.count(Referral.id).label('count')
     ).filter(
-        Referral.status == 'completed',
-        Referral.created_at.between(start_date, end_date)
-    ).scalar() or 0
+        query.whereclause if query.whereclause is not None else True
+    ).group_by(Referral.status).all()
     
-    # Referrals by status
-    status_counts = dict(
-        base_query.with_entities(
-            Referral.status, 
-            func.count(Referral.id)
-        ).group_by(Referral.status).all()
+    for status, count in status_query:
+        status_counts[status] = count
+    
+    # Calculate total commission from completed referrals
+    total_commission = db.session.query(
+        func.sum(case(
+            (Referral.status == 'completed', Referral.commission_amount),
+            else_=0
+        ))
+    ).filter(
+        query.whereclause if query.whereclause is not None else True
+    ).scalar() or 0.0
+    
+    # Get monthly commission distribution
+    current_year = datetime.utcnow().year
+    commission_query = db.session.query(
+        extract('month', Referral.created_at).label('month'),
+        func.sum(case(
+            (Referral.status == 'completed', Referral.commission_amount),
+            else_=0
+        )).label('commission')
     )
+    
+    if query.whereclause is not None:
+        commission_query = commission_query.filter(query.whereclause)
+    
+    commission_by_month = commission_query.filter(
+        extract('year', Referral.created_at) == current_year
+    ).group_by('month').all()
+    
+    commission_distribution = {}
+    for month, commission in commission_by_month:
+        month_str = f"{current_year}-{int(month):02d}"
+        commission_distribution[month_str] = float(commission or 0)
     
     # Calculate conversion rate
-    completed = status_counts.get('completed', 0)
-    conversion_rate = (completed / total_referrals * 100) if total_referrals > 0 else 0
-    
-    # Commission distribution by treatment group
-    commission_by_group = db.session.query(
-        TreatmentGroup.name,
-        func.sum(Referral.commission_amount)
-    ).join(
-        Treatment, TreatmentGroup.id == Treatment.group_id
-    ).join(
-        Referral, Treatment.id == Referral.treatment_id
-    ).filter(
-        Referral.status == 'completed',
-        Referral.created_at.between(start_date, end_date)
-    ).group_by(TreatmentGroup.name).all()
-    
-    commission_distribution = {str(k): float(v or 0) for k, v in commission_by_group}
-    
-    # Treatment success rates and commissions
-    treatment_stats = db.session.query(
-        Treatment.name,
-        func.count(Referral.id).label('total'),
-        func.sum(case((Treatment_Status.outcome == 'success', 1), else_=0)).label('successful'),
-        func.avg(case(
-            (Treatment_Status.end_date != None, 
-             func.extract('epoch', Treatment_Status.end_date - Treatment_Status.start_date) / 86400),
-            else_=None
-        )).label('avg_duration'),
-        func.sum(Referral.commission_amount).label('total_commission'),
-        TreatmentGroup.commission_amount.label('fixed_commission')
-    ).select_from(Treatment).join(
-        Referral, Treatment.id == Referral.treatment_id
-    ).outerjoin(
-        Treatment_Status, Referral.id == Treatment_Status.referral_id
-    ).outerjoin(
-        TreatmentGroup, Treatment.group_id == TreatmentGroup.id
-    ).filter(
-        Referral.created_at.between(start_date, end_date)
-    ).group_by(Treatment.name, TreatmentGroup.commission_amount).all()
-    
-    treatment_distribution = {str(stat[0]): stat[1] for stat in treatment_stats}
-    treatment_success_rate = {
-        str(stat[0]): (stat[2] / stat[1] * 100) if stat[1] > 0 else 0
-        for stat in treatment_stats
-    }
-    treatment_commission = {
-        str(stat[0]): {
-            'total': float(stat[4] or 0),
-            'fixed_rate': float(stat[5] or 0)
-        }
-        for stat in treatment_stats
-    }
-    
-    # Average commission per referral
-    avg_commission = float(total_commissions) / completed if completed > 0 else 0
-    
-    # Monthly growth rate calculation
-    last_month = start_date - timedelta(days=30)
-    current_month_referrals = total_referrals
-    last_month_referrals = Referral.query.filter(
-        Referral.created_at.between(last_month, start_date)
-    ).count()
-    
-    monthly_growth_rate = (
-        ((current_month_referrals - last_month_referrals) / last_month_referrals * 100)
-        if last_month_referrals > 0 else 0
-    )
+    completed_count = status_counts.get('completed', 0)
+    conversion_rate = (completed_count / total_referrals * 100) if total_referrals > 0 else 0
     
     return {
         'total_referrals': total_referrals,
-        'total_commissions': float(total_commissions),
-        'avg_commission': round(float(avg_commission), 2),
         'status_counts': status_counts,
-        'conversion_rate': round(conversion_rate, 2),
-        'treatment_distribution': treatment_distribution,
-        'treatment_success_rate': {k: round(v, 2) for k, v in treatment_success_rate.items()},
+        'total_commission': float(total_commission),
         'commission_distribution': commission_distribution,
-        'treatment_commission': treatment_commission,
-        'monthly_growth_rate': round(monthly_growth_rate, 2)
+        'conversion_rate': round(conversion_rate, 1)
     }
 
 def get_top_affiliates(limit=5):
@@ -130,3 +97,35 @@ def get_top_affiliates(limit=5):
     ).group_by(Affiliate.id).order_by(
         func.sum(Referral.commission_amount).desc()
     ).limit(limit).all()
+
+def get_country_stats():
+    """Get referral statistics by country"""
+    from models import Referral
+    from sqlalchemy import func, case
+    
+    country_stats = db.session.query(
+        Referral.country,
+        func.count(Referral.id).label('total_referrals'),
+        func.count(case(
+            (Referral.status == 'completed', 1),
+            else_=None
+        )).label('completed_referrals'),
+        func.sum(case(
+            (Referral.status == 'completed', Referral.commission_amount),
+            else_=0
+        )).label('total_commission')
+    ).filter(
+        Referral.country.isnot(None)
+    ).group_by(
+        Referral.country
+    ).order_by(
+        func.count(Referral.id).desc()
+    ).all()
+    
+    return [{
+        'country': stat.country,
+        'total_referrals': stat.total_referrals,
+        'completed_referrals': stat.completed_referrals,
+        'completion_rate': (stat.completed_referrals / stat.total_referrals * 100) if stat.total_referrals > 0 else 0,
+        'total_commission': float(stat.total_commission or 0)
+    } for stat in country_stats]

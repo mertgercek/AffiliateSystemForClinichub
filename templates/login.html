@@ -8,7 +8,7 @@
         <div class="card">
             <div class="card-body">
                 <h2 class="card-title text-center mb-4">Login</h2>
-                <form method="POST" action="{{ url_for('auth.login') }}">
+                <form method="POST" action="{{ url_for('auth.login') }}" id="loginForm">
                     <div class="mb-3">
                         <label for="email" class="form-label">Email</label>
                         <input type="email" class="form-control" id="email" name="email" required>
@@ -28,4 +28,32 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('loginForm');
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        grecaptcha.ready(function() {
+            grecaptcha.execute('{{ config.RECAPTCHA_SITE_KEY }}', {action: 'submit_login'})
+            .then(function(token) {
+                const tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = 'recaptcha_token';
+                tokenInput.value = token;
+                form.appendChild(tokenInput);
+                form.submit();
+            })
+            .catch(function(error) {
+                console.error('reCAPTCHA error:', error);
+                alert('Error with security check. Please try again.');
+            });
+        });
+    });
+});
+</script>
 {% endblock %}

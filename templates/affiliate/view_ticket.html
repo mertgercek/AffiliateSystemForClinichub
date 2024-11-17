@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Ticket #{{ ticket.id }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Ticket Details -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h3 class="card-title">{{ ticket.subject }}</h3>
+                    <div class="d-flex justify-content-between mb-3">
+                        <div>
+                            <span class="badge bg-{{ 'success' if ticket.status == 'closed' 
+                                                else 'warning' if ticket.status == 'in-progress' 
+                                                else 'primary' }} me-2">
+                                {{ ticket.status }}
+                            </span>
+                            <span class="badge bg-{{ 'danger' if ticket.priority == 'high' 
+                                                else 'warning' if ticket.priority == 'normal' 
+                                                else 'info' }}">
+                                {{ ticket.priority }}
+                            </span>
+                        </div>
+                        <small class="text-muted">
+                            Created: {{ ticket.created_at.strftime('%Y-%m-%d %H:%M') }}
+                        </small>
+                    </div>
+                    <div class="ticket-message">
+                        {{ ticket.message|nl2br if ticket.message else '' }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Responses -->
+            {% for response in ticket.responses %}
+            <div class="card mb-3 {{ 'border-primary' if response.user.role == 'admin' }}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <strong>{{ response.user.username }}</strong>
+                        <small class="text-muted">
+                            {{ response.created_at.strftime('%Y-%m-%d %H:%M') }}
+                        </small>
+                    </div>
+                    <div class="response-message">
+                        {{ response.message|nl2br if response.message else '' }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- Reply Form -->
+            {% if ticket.status != 'closed' %}
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Add Reply</h5>
+                    <form method="POST" action="{{ url_for('affiliate.reply_ticket', id=ticket.id) }}">
+                        <div class="mb-3">
+                            <textarea class="form-control" name="message" rows="4" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Send Reply</button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Ticket Information</h5>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Status</dt>
+                        <dd class="col-sm-8">{{ ticket.status }}</dd>
+                        
+                        <dt class="col-sm-4">Priority</dt>
+                        <dd class="col-sm-8">{{ ticket.priority }}</dd>
+                        
+                        <dt class="col-sm-4">Created</dt>
+                        <dd class="col-sm-8">{{ ticket.created_at.strftime('%Y-%m-%d %H:%M') }}</dd>
+                        
+                        <dt class="col-sm-4">Updated</dt>
+                        <dd class="col-sm-8">{{ ticket.updated_at.strftime('%Y-%m-%d %H:%M') }}</dd>
+                        
+                        {% if ticket.assigned_admin %}
+                        <dt class="col-sm-4">Assigned To</dt>
+                        <dd class="col-sm-8">{{ ticket.assigned_admin.username }}</dd>
+                        {% endif %}
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

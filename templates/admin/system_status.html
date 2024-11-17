@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}System Status{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">System Status</h2>
+
+    <!-- Server Resources -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="h5 mb-0">CPU & Memory Usage</h3>
+                </div>
+                <div class="card-body">
+                    <canvas id="resourceChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="h5 mb-0">System Information</h3>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Uptime</dt>
+                        <dd class="col-sm-8" id="uptime">{{ uptime }}</dd>
+                        
+                        <dt class="col-sm-4">Python Version</dt>
+                        <dd class="col-sm-8">{{ python_version }}</dd>
+                        
+                        <dt class="col-sm-4">Flask Version</dt>
+                        <dd class="col-sm-8">{{ flask_version }}</dd>
+                        
+                        <dt class="col-sm-4">Database Size</dt>
+                        <dd class="col-sm-8">{{ db_size }}</dd>
+                        
+                        <dt class="col-sm-4">Active Sessions</dt>
+                        <dd class="col-sm-8">{{ active_sessions }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Errors -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="h5 mb-0">Recent Errors</h3>
+            <a href="{{ url_for('admin.server_logs') }}" class="btn btn-sm btn-primary">View All Logs</a>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Level</th>
+                            <th>Message</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for error in recent_errors %}
+                        <tr>
+                            <td>{{ error.timestamp }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'danger' if error.level == 'ERROR' else 'warning' }}">
+                                    {{ error.level }}
+                                </span>
+                            </td>
+                            <td>{{ error.message }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize resource usage chart
+    const ctx = document.getElementById('resourceChart').getContext('2d');
+    const resourceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'CPU Usage (%)',
+                borderColor: 'rgb(75, 192, 192)',
+                data: []
+            }, {
+                label: 'Memory Usage (%)',
+                borderColor: 'rgb(255, 99, 132)',
+                data: []
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            }
+        }
+    });
+
+    // Update resource usage every 5 seconds
+    function updateResourceUsage() {
+        fetch('/admin/api/resource-usage')
+            .then(response => response.json())
+            .then(data => {
+                const labels = resourceChart.data.labels;
+                const cpuData = resourceChart.data.datasets[0].data;
+                const memData = resourceChart.data.datasets[1].data;
+
+                labels.push(new Date().toLocaleTimeString());
+                cpuData.push(data.cpu_percent);
+                memData.push(data.memory_percent);
+
+                if (labels.length > 20) {
+                    labels.shift();
+                    cpuData.shift();
+                    memData.shift();
+                }
+
+                resourceChart.update();
+                
+                // Update uptime
+                document.getElementById('uptime').textContent = data.uptime;
+            });
+    }
+
+    updateResourceUsage();
+    setInterval(updateResourceUsage, 5000);
+});
+</script>
+{% endblock %} 

@@ -10,13 +10,17 @@ A clinic affiliate management system providing customized landing pages, referra
 - Treatment management system
 - Referral tracking with data masking
 - Commission calculation system
-- Analytics dashboard
+- Analytics dashboard with real-time metrics
 - REST API with API key management
+- Email notification system with templates
+- Automated affiliate approval workflow
+- Country-based analytics and tracking
 
 ## Requirements
 - Python 3.11+
 - PostgreSQL database
 - Mandrill API key for email services
+- Redis (optional, for caching)
 
 ## Installation
 ```bash

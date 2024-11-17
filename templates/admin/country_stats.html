@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Country Statistics{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Country Statistics</h2>
+        <div class="d-flex gap-2">
+            <div class="input-group">
+                <input type="text" class="form-control" id="searchInput" placeholder="Search countries...">
+                <select class="form-select" id="sortBy" style="max-width: 200px;">
+                    <option value="referrals">Sort by Total Referrals</option>
+                    <option value="completed">Sort by Completed</option>
+                    <option value="rate">Sort by Completion Rate</option>
+                    <option value="commission">Sort by Commission</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="countryTable">
+                    <thead>
+                        <tr>
+                            <th>Country</th>
+                            <th>Total Referrals</th>
+                            <th>Completed</th>
+                            <th>Completion Rate</th>
+                            <th>Total Commission</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stat in country_stats %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <img src="https://flagcdn.com/24x18/{{ stat.country.lower() }}.png" 
+                                         alt="{{ stat.country }}" class="me-2">
+                                    {{ stat.country }}
+                                </div>
+                            </td>
+                            <td>{{ stat.total_referrals }}</td>
+                            <td>{{ stat.completed_referrals }}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="progress flex-grow-1 me-2" style="height: 6px;">
+                                        <div class="progress-bar bg-success" 
+                                             style="width: {{ stat.completion_rate }}%"></div>
+                                    </div>
+                                    <span class="text-muted small">{{ "%.1f"|format(stat.completion_rate) }}%</span>
+                                </div>
+                            </td>
+                            <td>${{ "%.2f"|format(stat.total_commission) }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-info" onclick="viewCountryDetails('{{ stat.country }}')">
+                                    View Details
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Country Details Modal -->
+<div class="modal fade" id="countryDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Country Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="countryDetailsContent">Loading...</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Search and sort functionality
+document.getElementById('searchInput').addEventListener('input', filterTable);
+document.getElementById('sortBy').addEventListener('change', sortTable);
+
+function filterTable() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('#countryTable tbody tr');
+    
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchTerm) ? '' : 'none';
+    });
+}
+
+function sortTable() {
+    const sortBy = document.getElementById('sortBy').value;
+    const tbody = document.querySelector('#countryTable tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    
+    rows.sort((a, b) => {
+        let aValue, bValue;
+        
+        switch(sortBy) {
+            case 'referrals':
+                aValue = parseInt(a.cells[1].textContent);
+                bValue = parseInt(b.cells[1].textContent);
+                break;
+            case 'completed':
+                aValue = parseInt(a.cells[2].textContent);
+                bValue = parseInt(b.cells[2].textContent);
+                break;
+            case 'rate':
+                aValue = parseFloat(a.cells[3].querySelector('.text-muted').textContent);
+                bValue = parseFloat(b.cells[3].querySelector('.text-muted').textContent);
+                break;
+            case 'commission':
+                aValue = parseFloat(a.cells[4].textContent.replace('$', ''));
+                bValue = parseFloat(b.cells[4].textContent.replace('$', ''));
+                break;
+        }
+        
+        return bValue - aValue;
+    });
+    
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+function viewCountryDetails(country) {
+    const modal = new bootstrap.Modal(document.getElementById('countryDetailsModal'));
+    const content = document.getElementById('countryDetailsContent');
+    
+    content.innerHTML = 'Loading...';
+    modal.show();
+    
+    fetch(`/admin/api/country-stats/${country}`)
+        .then(response => response.json())
+        .then(data => {
+            content.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Overview</h6>
+                        <dl class="row">
+                            <dt class="col-sm-6">Total Referrals</dt>
+                            <dd class="col-sm-6">${data.total_referrals}</dd>
+                            
+                            <dt class="col-sm-6">Completed Referrals</dt>
+                            <dd class="col-sm-6">${data.completed_referrals}</dd>
+                            
+                            <dt class="col-sm-6">Completion Rate</dt>
+                            <dd class="col-sm-6">${data.completion_rate.toFixed(1)}%</dd>
+                            
+                            <dt class="col-sm-6">Total Commission</dt>
+                            <dd class="col-sm-6">$${data.total_commission.toFixed(2)}</dd>
+                        </dl>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Monthly Trends</h6>
+                        <canvas id="countryTrendChart"></canvas>
+                    </div>
+                </div>
+            `;
+            
+            // Add chart if needed
+            if (data.monthly_trends) {
+                const ctx = document.getElementById('countryTrendChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: Object.keys(data.monthly_trends),
+                        datasets: [{
+                            label: 'Referrals',
+                            data: Object.values(data.monthly_trends),
+                            borderColor: 'rgb(75, 192, 192)',
+                            tension: 0.1
+                        }]
+                    }
+                });
+            }
+        });
+}
+</script>
+{% endblock %} 

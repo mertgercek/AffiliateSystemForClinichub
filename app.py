@@ -1,15 +1,48 @@
 import os
-from flask import Flask, redirect, url_for
+from flask import Flask, redirect, url_for, request, flash
 from dotenv import load_dotenv
 from flask_login import current_user
 from sqlalchemy import text
 from extensions import db, login_manager, toolbar
+import requests
+from filters import nl2br, flag
+from flask_migrate import Migrate
+from datetime import datetime
+import logging
+from logging.handlers import RotatingFileHandler
 
 # Load environment variables first
 load_dotenv()
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__, static_url_path='/static')
+    
+    # Ensure the static/images directory exists
+    os.makedirs(os.path.join(app.static_folder, 'images'), exist_ok=True)
+    
+    # Simple error logging setup
+    if not os.path.exists('logs'):
+        os.mkdir('logs')
+    
+    # Set up file handler for errors only
+    file_handler = RotatingFileHandler(
+        'logs/error.log', 
+        maxBytes=1024000,  # 1MB
+        backupCount=5
+    )
+    
+    # Only log errors
+    file_handler.setLevel(logging.ERROR)
+    file_handler.setFormatter(logging.Formatter(
+        '%(asctime)s - %(message)s'
+    ))
+    
+    app.logger.addHandler(file_handler)
+    app.logger.setLevel(logging.ERROR)
+    
+    # Add both filters
+    app.jinja_env.filters['nl2br'] = nl2br
+    app.jinja_env.filters['flag'] = flag
     
     # Configuration
     app.secret_key = os.environ.get("FLASK_SECRET_KEY", "default-secret-key")
@@ -19,6 +52,8 @@ def create_app():
         "pool_pre_ping": True,
     }
     app.config['MANDRILL_API_KEY'] = os.environ.get('MANDRILL_API_KEY')
+    app.config['RECAPTCHA_SITE_KEY'] = os.getenv('RECAPTCHA_SITE_KEY')
+    app.config['RECAPTCHA_SECRET_KEY'] = os.getenv('RECAPTCHA_SECRET_KEY')
     
     # Initialize extensions with the app
     db.init_app(app)
@@ -26,11 +61,14 @@ def create_app():
     login_manager.login_view = 'auth.login'
     toolbar.init_app(app)
 
+    # Initialize Flask-Migrate
+    migrate = Migrate(app, db)
+
     # Move user loader callback inside create_app
     @login_manager.user_loader
     def load_user(user_id):
         from models import User
-        return User.query.get(int(user_id))
+        return db.session.get(User, int(user_id))
 
     # Import blueprints
     from auth import bp as auth_bp
@@ -56,21 +94,15 @@ def create_app():
     # Initialize database
     with app.app_context():
         # Import models
-        from models import User
-        
-        # Test database connection
-        try:
-            db.session.execute(text('SELECT 1'))
-            print("Database connection successful!")
-        except Exception as e:
-            print("Database connection failed:", e)
-            return app
-        
-        # Create database tables
+        from models import User, Affiliate, Treatment, TreatmentGroup, Referral, Treatment_Status, Ticket, TicketResponse
+        # Drop and recreate all tables
+        # db.drop_all()
         db.create_all()
-
-        # Create admin user if not exists
+        
+        # Check if admin user exists
         admin = User.query.filter_by(email='admin@clinichub.com').first()
+        
+        # Create admin user only if it doesn't exist
         if not admin:
             admin = User()
             admin.username = 'admin'
@@ -78,9 +110,37 @@ def create_app():
             admin.role = 'admin'
             admin.set_password('admin123')
             admin.email_verified = True
+            admin.last_seen = datetime.utcnow()
             db.session.add(admin)
             db.session.commit()
-            print("Admin user created successfully!")
+            app.logger.info('Admin user created successfully!')
+        else:
+            app.logger.info('Admin user already exists!')
+            
+    @app.before_request
+    def before_request():
+        if current_user.is_authenticated:
+            current_user.last_seen = datetime.utcnow()
+            db.session.commit()
+            
+    # Log all requests
+    @app.after_request
+    def after_request(response):
+        if request.endpoint:
+            app.logger.info(f'{request.remote_addr} - {request.method} {request.url} - {response.status_code}')
+        return response
+
+    @app.context_processor
+    def utility_processor():
+        def get_pending_affiliates_count():
+            if current_user.is_authenticated and current_user.role == 'admin':
+                from models import Affiliate
+                return Affiliate.query.filter_by(approved=False).count()
+            return 0
+            
+        return {
+            'pending_affiliates_count': get_pending_affiliates_count()
+        }
 
     return app
 

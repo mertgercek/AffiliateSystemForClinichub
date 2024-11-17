@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}API Tester{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">API Tester</h2>
+
+    <div class="row">
+        <div class="col-md-6">
+            <!-- Request Builder -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="h5 mb-0">Request Builder</h3>
+                </div>
+                <div class="card-body">
+                    <form id="apiTestForm">
+                        <div class="mb-3">
+                            <label class="form-label">Method</label>
+                            <select class="form-select" id="method">
+                                <option value="GET">GET</option>
+                                <option value="POST">POST</option>
+                                <option value="PUT">PUT</option>
+                                <option value="DELETE">DELETE</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Endpoint</label>
+                            <div class="input-group">
+                                <span class="input-group-text">/api/v1/</span>
+                                <input type="text" class="form-control" id="endpoint" 
+                                       placeholder="e.g., webhook/treatment-completed">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Headers</label>
+                            <div id="headers">
+                                <div class="input-group mb-2">
+                                    <input type="text" class="form-control" placeholder="Key" 
+                                           value="Content-Type" readonly>
+                                    <input type="text" class="form-control" placeholder="Value" 
+                                           value="application/json" readonly>
+                                </div>
+                                <div class="input-group mb-2">
+                                    <input type="text" class="form-control" placeholder="Key" 
+                                           value="X-API-Key">
+                                    <input type="text" class="form-control" placeholder="Value" 
+                                           id="apiKey">
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="addHeader()">
+                                Add Header
+                            </button>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Request Body</label>
+                            <textarea class="form-control font-monospace" id="requestBody" rows="8"
+                                    placeholder='{
+    "key": "value"
+}'></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Send Request</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Request History -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="h5 mb-0">History</h3>
+                    <button class="btn btn-sm btn-secondary" onclick="clearHistory()">Clear</button>
+                </div>
+                <div class="card-body">
+                    <div id="requestHistory" style="max-height: 300px; overflow-y: auto;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <!-- Response -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="h5 mb-0">Response</h3>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <div id="responseStatus"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Headers</label>
+                        <pre id="responseHeaders" class="bg-dark text-light p-3 rounded"></pre>
+                    </div>
+                    <div>
+                        <label class="form-label">Body</label>
+                        <pre id="responseBody" class="bg-dark text-light p-3 rounded"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('apiTestForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const method = document.getElementById('method').value;
+    const endpoint = document.getElementById('endpoint').value;
+    const headers = {};
+    
+    // Collect headers
+    document.querySelectorAll('#headers .input-group').forEach(group => {
+        const inputs = group.querySelectorAll('input');
+        const key = inputs[0].value.trim();
+        const value = inputs[1].value.trim();
+        if (key && value) {
+            headers[key] = value;
+        }
+    });
+    
+    // Prepare request body
+    let body = null;
+    const requestBody = document.getElementById('requestBody').value;
+    if (requestBody && method !== 'GET') {
+        try {
+            body = JSON.parse(requestBody);
+        } catch (e) {
+            alert('Invalid JSON in request body');
+            return;
+        }
+    }
+    
+    try {
+        const response = await fetch(`/api/v1/${endpoint}`, {
+            method,
+            headers,
+            body: body ? JSON.stringify(body) : null
+        });
+        
+        // Display response status
+        const statusEl = document.getElementById('responseStatus');
+        statusEl.innerHTML = `
+            <span class="badge bg-${response.ok ? 'success' : 'danger'}">
+                ${response.status} ${response.statusText}
+            </span>
+        `;
+        
+        // Display response headers
+        const responseHeaders = {};
+        response.headers.forEach((value, key) => {
+            responseHeaders[key] = value;
+        });
+        document.getElementById('responseHeaders').textContent = 
+            JSON.stringify(responseHeaders, null, 2);
+        
+        // Display response body
+        const responseBody = await response.text();
+        try {
+            const jsonBody = JSON.parse(responseBody);
+            document.getElementById('responseBody').textContent = 
+                JSON.stringify(jsonBody, null, 2);
+        } catch {
+            document.getElementById('responseBody').textContent = responseBody;
+        }
+        
+        // Add to history
+        addToHistory(method, endpoint, response.status);
+        
+    } catch (error) {
+        document.getElementById('responseStatus').innerHTML = `
+            <span class="badge bg-danger">Error: ${error.message}</span>
+        `;
+    }
+});
+
+function addHeader() {
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'input-group mb-2';
+    headerDiv.innerHTML = `
+        <input type="text" class="form-control" placeholder="Key">
+        <input type="text" class="form-control" placeholder="Value">
+        <button class="btn btn-outline-danger" type="button" onclick="this.parentElement.remove()">
+            <i class="bi bi-trash"></i>
+        </button>
+    `;
+    document.getElementById('headers').appendChild(headerDiv);
+}
+
+function addToHistory(method, endpoint, status) {
+    const history = document.getElementById('requestHistory');
+    const entry = document.createElement('div');
+    entry.className = 'mb-2';
+    entry.innerHTML = `
+        <small class="text-muted">${new Date().toLocaleTimeString()}</small>
+        <div class="d-flex justify-content-between align-items-center">
+            <span>
+                <span class="badge bg-secondary">${method}</span>
+                ${endpoint}
+            </span>
+            <span class="badge bg-${status < 400 ? 'success' : 'danger'}">${status}</span>
+        </div>
+    `;
+    history.insertBefore(entry, history.firstChild);
+}
+
+function clearHistory() {
+    document.getElementById('requestHistory').innerHTML = '';
+}
+</script>
+{% endblock %} 

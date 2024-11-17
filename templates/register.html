@@ -39,5 +39,29 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/form-validation.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('registerForm');
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        grecaptcha.ready(function() {
+            grecaptcha.execute('{{ config.RECAPTCHA_SITE_KEY }}', {action: 'submit_register'})
+            .then(function(token) {
+                const tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = 'recaptcha_token';
+                tokenInput.value = token;
+                form.appendChild(tokenInput);
+                form.submit();
+            })
+            .catch(function(error) {
+                console.error('reCAPTCHA error:', error);
+                alert('Error with security check. Please try again.');
+            });
+        });
+    });
+});
+</script>
 {% endblock %}

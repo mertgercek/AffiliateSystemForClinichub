@@ -6,6 +6,7 @@
     <title>ClinicHub - {% block title %}{% endblock %}</title>
     <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    <script src="https://www.google.com/recaptcha/api.js?render={{ config.RECAPTCHA_SITE_KEY }}"></script>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -22,19 +23,153 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('admin.dashboard' if current_user.role == 'admin' else 'affiliate.dashboard') }}">Dashboard</a>
                         </li>
+                        
                         {% if current_user.role == 'admin' %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('admin.manage_treatments') }}">Treatments</a>
+                        <!-- Management Dropdown -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="managementDropdown" role="button" 
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                Management
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="managementDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('admin.manage_users') }}">
+                                    <i class="bi bi-people"></i> Users
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin.manage_treatments') }}">
+                                    <i class="bi bi-clipboard2-pulse"></i> Treatments
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin.manage_treatment_groups') }}">
+                                    <i class="bi bi-folder2"></i> Treatment Groups
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin.manage_referrals') }}">
+                                    <i class="bi bi-list-check"></i> Referrals
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin.manage_treatment_mappings') }}">
+                                    <i class="bi bi-arrow-left-right"></i> Treatment Mappings
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin.bulk_upload') }}">
+                                    <i class="bi bi-cloud-upload"></i> Bulk Upload
+                                </a></li>
+                            </ul>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('admin.manage_treatment_groups') }}">Treatment Groups</a>
+
+                        <!-- Development Dropdown -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="devDropdown" role="button" 
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                Development
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="devDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('admin.system_status') }}">
+                                    <i class="bi bi-cpu"></i> System Status
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin.server_logs') }}">
+                                    <i class="bi bi-terminal"></i> Server Logs
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin.api_tester') }}">
+                                    <i class="bi bi-braces"></i> API Tester
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin.email_tester') }}">
+                                    <i class="bi bi-envelope"></i> Email Tester
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin.manage_api_keys') }}">
+                                    <i class="bi bi-key"></i> API Keys
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin.manage_webhooks') }}">
+                                    <i class="bi bi-box-arrow-up-right"></i> Webhooks
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin.pending_affiliates') }}">
+                                    <i class="bi bi-person-check"></i> Pending Affiliates
+                                    {% if pending_affiliates_count > 0 %}
+                                    <span class="badge bg-danger">{{ pending_affiliates_count }}</span>
+                                    {% endif %}
+                                </a></li>
+                            </ul>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('admin.manage_api_keys') }}">API Keys</a>
+
+                        <!-- Analytics Dropdown -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="analyticsDropdown" role="button" 
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                Analytics
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="analyticsDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('admin.referral_heatmap') }}">
+                                    <i class="bi bi-geo-alt"></i> Distribution Map
+                                </a></li>
+                                <li><a class="dropdown-item" href="#" onclick="showComingSoon()">
+                                    <i class="bi bi-graph-up"></i> Performance Metrics
+                                </a></li>
+                                <li><a class="dropdown-item" href="#" onclick="showComingSoon()">
+                                    <i class="bi bi-cash-coin"></i> Revenue Reports
+                                </a></li>
+                            </ul>
+                        </li>
+
+                        <!-- Support Dropdown -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="supportDropdown" role="button" 
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                Support
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="supportDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('admin.manage_tickets') }}">
+                                    <i class="bi bi-ticket"></i> Tickets
+                                    <span class="badge bg-danger ms-2" id="newTicketsCount"></span>
+                                </a></li>
+                                <li><a class="dropdown-item" href="#" onclick="showComingSoon()">
+                                    <i class="bi bi-chat-dots"></i> Live Chat
+                                </a></li>
+                            </ul>
+                        </li>
+
+                        <!-- Notifications Dropdown -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link position-relative" href="#" id="notificationsDropdown" 
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-bell"></i>
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" 
+                                      id="notificationCount" style="display: none;">
+                                </span>
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-end dropdown-menu-dark" id="notificationsMenu" 
+                                 aria-labelledby="notificationsDropdown" style="width: 300px;">
+                                <div class="dropdown-header d-flex justify-content-between align-items-center">
+                                    <span>Notifications</span>
+                                    <a href="{{ url_for('admin.notifications') }}" class="text-decoration-none">
+                                        View All
+                                    </a>
+                                </div>
+                                <div id="notificationsList"></div>
+                            </div>
                         </li>
                         {% endif %}
+
+                        {% if current_user.role == 'affiliate' %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a>
+                            <a class="nav-link" href="{{ url_for('affiliate.tickets') }}">Support</a>
+                        </li>
+                        {% endif %}
+
+                        <!-- User Dropdown -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" 
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-person-circle"></i>
+                                {{ current_user.username }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end" aria-labelledby="userDropdown">
+                                <li><a class="dropdown-item" href="#" onclick="showComingSoon()">
+                                    <i class="bi bi-gear"></i> Settings
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">
+                                    <i class="bi bi-box-arrow-right"></i> Logout
+                                </a></li>
+                            </ul>
                         </li>
                     {% else %}
                         {% if not affiliate %}
@@ -64,6 +199,68 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <script>
+    function showComingSoon() {
+        alert('This feature is coming soon!');
+    }
+
+    // Optional: Add a function to update the new tickets count
+    function updateNewTicketsCount() {
+        fetch('/admin/api/new-tickets-count')
+            .then(response => response.json())
+            .then(data => {
+                const badge = document.getElementById('newTicketsCount');
+                if (data.count > 0) {
+                    badge.textContent = data.count;
+                    badge.style.display = 'inline';
+                } else {
+                    badge.style.display = 'none';
+                }
+            });
+    }
+
+    // Optional: Update ticket count periodically if user is admin
+    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+    setInterval(updateNewTicketsCount, 60000); // Update every minute
+    updateNewTicketsCount(); // Initial update
+    {% endif %}
+
+    function updateNotifications() {
+        fetch('/admin/api/notifications')
+            .then(response => response.json())
+            .then(notifications => {
+                const count = notifications.length;
+                const countBadge = document.getElementById('notificationCount');
+                const list = document.getElementById('notificationsList');
+                
+                if (count > 0) {
+                    countBadge.textContent = count;
+                    countBadge.style.display = 'block';
+                    
+                    list.innerHTML = notifications.map(n => `
+                        <a class="dropdown-item" href="${n.link}">
+                            <div class="d-flex w-100 justify-content-between">
+                                <small>${n.message}</small>
+                                <small class="text-muted">${n.created_at}</small>
+                            </div>
+                        </a>
+                    `).join('');
+                } else {
+                    countBadge.style.display = 'none';
+                    list.innerHTML = '<div class="dropdown-item text-muted">No new notifications</div>';
+                }
+            });
+    }
+
+    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+    // Update notifications every 30 seconds
+    setInterval(updateNotifications, 30000);
+    updateNotifications(); // Initial update
+    {% endif %}
+    </script>
+
     {% block scripts %}{% endblock %}
 </body>
 </html>

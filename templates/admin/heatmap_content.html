@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heatmap Content</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        .legend {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize map with specific options
+            const map = L.map('map', {
+                center: [41.0082, 28.9784],
+                zoom: 6,
+                minZoom: 2,
+                maxZoom: 18,
+                maxBounds: [[-90, -180], [90, 180]],
+                maxBoundsViscosity: 1.0
+            });
+
+            // Add tile layer with specific options
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                noWrap: true,
+                bounds: [[-90, -180], [90, 180]]
+            }).addTo(map);
+
+            // Add legend
+            const legend = L.control({position: 'bottomright'});
+            legend.onAdd = function (map) {
+                const div = L.DomUtil.create('div', 'legend');
+                div.innerHTML = `
+                    <h6 class="mb-2">Intensity</h6>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: blue"></div>
+                        <span>Low</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: lime"></div>
+                        <span>Medium</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: red"></div>
+                        <span>High</span>
+                    </div>
+                `;
+                return div;
+            };
+            legend.addTo(map);
+
+            let heatLayer = null;
+
+            // Function to load and update heatmap data
+            function updateHeatmap() {
+                const params = new URLSearchParams(window.location.search);
+                const dateRange = params.get('days') || '30';
+                const status = params.get('status') || 'all';
+
+                fetch(`/admin/api/referral-heatmap?days=${dateRange}&status=${status}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const points = data.map(point => [
+                            point.lat,
+                            point.lng,
+                            point.intensity
+                        ]);
+
+                        if (heatLayer) {
+                            map.removeLayer(heatLayer);
+                        }
+
+                        heatLayer = L.heatLayer(points, {
+                            radius: 25,
+                            blur: 15,
+                            maxZoom: 10,
+                            minOpacity: 0.3,
+                            gradient: {
+                                0.4: 'blue',
+                                0.6: 'lime',
+                                0.8: 'yellow',
+                                1.0: 'red'
+                            }
+                        }).addTo(map);
+
+                        if (points.length > 0) {
+                            const bounds = L.latLngBounds(points.map(p => [p[0], p[1]]));
+                            map.fitBounds(bounds, { 
+                                padding: [50, 50],
+                                maxZoom: 12
+                            });
+                        }
+                    });
+            }
+
+            // Listen for messages from parent window
+            window.addEventListener('message', function(e) {
+                if (e.data.type === 'updateHeatmap') {
+                    updateHeatmap();
+                }
+            });
+
+            // Initial load
+            updateHeatmap();
+
+            // Handle window resize
+            window.addEventListener('resize', function() {
+                map.invalidateSize();
+            });
+        });
+    </script>
+</body>
+</html> 
