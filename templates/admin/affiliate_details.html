@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}Affiliate Details - {{ affiliate.user.username }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Affiliate Details</h1>
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+
+    <!-- Affiliate Information -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Profile Information</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Username:</strong> {{ affiliate.user.username }}</p>
+                    <p><strong>Email:</strong> {{ affiliate.user.email }}</p>
+                    <p><strong>Registration Date:</strong> {{ affiliate.user.created_at.strftime('%Y-%m-%d') }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Commission Rate:</strong> {{ affiliate.commission_rate }}%</p>
+                    <p><strong>Total Earnings:</strong> ${{ affiliate.total_earnings|round(2) }}</p>
+                    <p><strong>Status:</strong> 
+                        <span class="badge {% if affiliate.approved %}bg-success{% else %}bg-warning{% endif %}">
+                            {{ "Approved" if affiliate.approved else "Pending" }}
+                        </span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analytics Overview -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Referrals</h5>
+                    <h2 class="card-text">{{ analytics.total_referrals }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Conversion Rate</h5>
+                    <h2 class="card-text">{{ analytics.conversion_rate }}%</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Average Commission</h5>
+                    <h2 class="card-text">${{ analytics.avg_commission }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Referrals Table -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Referral History</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Patient</th>
+                            <th>Treatment</th>
+                            <th>Status</th>
+                            <th>Treatment Value</th>
+                            <th>Commission</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for referral in referrals %}
+                        <tr>
+                            <td>{{ referral.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ referral.name }} {{ referral.surname }}</td>
+                            <td>{{ referral.treatment.name }}</td>
+                            <td>
+                                <span class="badge referral-status-{{ referral.status }}">
+                                    {{ referral.status }}
+                                </span>
+                            </td>
+                            <td>${{ referral.treatment_value|round(2) }}</td>
+                            <td>${{ referral.commission_amount|round(2) }}</td>
+                            <td>
+                                <a href="{{ url_for('admin.update_treatment_status', id=referral.id) }}" 
+                                   class="btn btn-sm btn-primary">Update Status</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center">No referrals found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section -->
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Referral Status Distribution</h5>
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Monthly Earnings</h5>
+                    <canvas id="earningsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Status Distribution Chart
+    const statusCtx = document.getElementById('statusChart').getContext('2d');
+    new Chart(statusCtx, {
+        type: 'pie',
+        data: {
+            labels: Object.keys({{ analytics.status_counts|tojson }}),
+            datasets: [{
+                data: Object.values({{ analytics.status_counts|tojson }}),
+                backgroundColor: [
+                    'rgb(54, 162, 235)',
+                    'rgb(255, 205, 86)',
+                    'rgb(75, 192, 192)'
+                ]
+            }]
+        }
+    });
+
+    // Monthly Earnings Chart
+    const earningsCtx = document.getElementById('earningsChart').getContext('2d');
+    new Chart(earningsCtx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys({{ analytics.commission_distribution|tojson }}),
+            datasets: [{
+                label: 'Monthly Earnings ($)',
+                data: Object.values({{ analytics.commission_distribution|tojson }}),
+                backgroundColor: 'rgb(75, 192, 192)'
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

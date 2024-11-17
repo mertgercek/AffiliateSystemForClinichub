@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Treatments{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Manage Treatments</h1>
+        <div>
+            <a href="{{ url_for('admin.manage_treatment_groups') }}" class="btn btn-secondary me-2">
+                Manage Groups
+            </a>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTreatmentModal">
+                Add Treatment
+            </button>
+        </div>
+    </div>
+
+    {% if treatments %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Group</th>
+                    <th>Fixed Commission</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for treatment in treatments %}
+                <tr>
+                    <td>{{ treatment.name }}</td>
+                    <td>{{ treatment.description }}</td>
+                    <td>
+                        {% if treatment.group %}
+                            {{ treatment.group.name }}
+                        {% else %}
+                            <span class="text-muted">No group assigned</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if treatment.group %}
+                            ${{ treatment.group.commission_amount }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge {% if treatment.active %}bg-success{% else %}bg-danger{% endif %}">
+                            {{ "Active" if treatment.active else "Inactive" }}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#editTreatmentModal{{ treatment.id }}">
+                            Edit
+                        </button>
+                        <form method="POST" action="{{ url_for('admin.toggle_treatment', id=treatment.id) }}" class="d-inline">
+                            <button type="submit" class="btn btn-sm {% if treatment.active %}btn-danger{% else %}btn-success{% endif %}">
+                                {{ "Deactivate" if treatment.active else "Activate" }}
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+
+                <!-- Edit Treatment Modal -->
+                <div class="modal fade" id="editTreatmentModal{{ treatment.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Edit Treatment</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <form method="POST" action="{{ url_for('admin.edit_treatment', id=treatment.id) }}">
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label for="name{{ treatment.id }}" class="form-label">Name</label>
+                                        <input type="text" class="form-control" id="name{{ treatment.id }}" 
+                                               name="name" value="{{ treatment.name }}" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="description{{ treatment.id }}" class="form-label">Description</label>
+                                        <textarea class="form-control" id="description{{ treatment.id }}" 
+                                                 name="description" rows="3" required>{{ treatment.description }}</textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="group{{ treatment.id }}" class="form-label">Treatment Group</label>
+                                        <select class="form-select" id="group{{ treatment.id }}" name="group_id">
+                                            <option value="">No group</option>
+                                            {% for group in treatment_groups %}
+                                            <option value="{{ group.id }}" 
+                                                    {% if treatment.group and treatment.group.id == group.id %}selected{% endif %}>
+                                                {{ group.name }} (${{ group.commission_amount }} commission)
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <button type="submit" class="btn btn-primary">Save changes</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">No treatments found. Add your first treatment using the button above.</div>
+    {% endif %}
+
+    <!-- Add Treatment Modal -->
+    <div class="modal fade" id="addTreatmentModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Treatment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" action="{{ url_for('admin.add_treatment') }}">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="group" class="form-label">Treatment Group</label>
+                            <select class="form-select" id="group" name="group_id">
+                                <option value="">No group</option>
+                                {% for group in treatment_groups %}
+                                <option value="{{ group.id }}">
+                                    {{ group.name }} (${{ group.commission_amount }} commission)
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Add Treatment</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{
+    "id": "1259f72f-00b4-4c69-ad75-cb2f188dbe24",
+    "title": "TechStackRecommender",
+    "isPrivate": true,
+    "slug": "TechStackRecommender",
+    "wasPublished": false,
+    "timeCreated": "2024-11-12T10:16:03.054Z",
+    "timeUpdated": "2024-11-17T02:16:54.758Z",
+    "user": {
+        "id": 37713046,
+        "username": "mertgercek34"
+    },
+    "language": "nix",
+    "config": {
+        "isServer": null,
+        "isExtension": null,
+        "gitRemoteUrl": null,
+        "isVnc": null,
+        "doClone": null
+    },
+    "multiplayers": [],
+    "source": null,
+    "domains": [],
+    "isAlwaysOn": false,
+    "isBoosted": false
+}

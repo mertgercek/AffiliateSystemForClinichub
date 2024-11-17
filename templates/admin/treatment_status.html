@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Update Treatment Status{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Update Treatment Status</h3>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h5>Patient Information</h5>
+                        <p><strong>Name:</strong> {{ referral.name }} {{ referral.surname }}</p>
+                        <p><strong>Treatment:</strong> {{ referral.treatment.name }}</p>
+                        <p><strong>Current Status:</strong> 
+                            <span class="badge referral-status-{{ referral.status }}">
+                                {{ referral.status }}
+                            </span>
+                        </p>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('admin.update_treatment_status', id=referral.id) }}">
+                        <div class="mb-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status" required>
+                                <option value="new" {% if referral.status == 'new' %}selected{% endif %}>New</option>
+                                <option value="in-progress" {% if referral.status == 'in-progress' %}selected{% endif %}>In Progress</option>
+                                <option value="completed" {% if referral.status == 'completed' %}selected{% endif %}>Completed</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Treatment Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="4">{{ referral.treatment_status.notes if referral.treatment_status else '' }}</textarea>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Update Status</button>
+                            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

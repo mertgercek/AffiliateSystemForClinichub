@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block title %}API Documentation{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">API Documentation</h1>
+    
+    <!-- Authentication Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="mb-0">Authentication</h3>
+        </div>
+        <div class="card-body">
+            <p>All API requests require authentication using an API key. Include your API key in the request headers:</p>
+            <pre><code>X-API-Key: your_api_key_here</code></pre>
+            
+            <div class="alert alert-info mt-3">
+                <h5>Rate Limiting</h5>
+                <p>The API is rate limited to protect our services:</p>
+                <ul>
+                    <li><strong>Limit:</strong> 100 requests per hour</li>
+                    <li><strong>Window:</strong> 3600 seconds (1 hour)</li>
+                </ul>
+                <p>When rate limit is exceeded, the API will respond with a 429 status code.</p>
+            </div>
+
+            <div class="alert alert-secondary mt-3">
+                <h5>CORS Support</h5>
+                <p>The API supports Cross-Origin Resource Sharing (CORS) with the following headers:</p>
+                <ul>
+                    <li><code>Access-Control-Allow-Origin: *</code></li>
+                    <li><code>Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS</code></li>
+                    <li><code>Access-Control-Allow-Headers: Content-Type, X-API-Key</code></li>
+                    <li><code>Access-Control-Max-Age: 3600</code></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Handling Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="mb-0">Error Handling</h3>
+        </div>
+        <div class="card-body">
+            <p>The API uses standard HTTP response codes and provides detailed error messages:</p>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Description</th>
+                            <th>Example Response</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>400</code></td>
+                            <td>Bad Request</td>
+                            <td>
+<pre><code>{
+  "error": "Validation error",
+  "message": "Missing required fields",
+  "details": ["name is required", "email is required"]
+}</code></pre>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><code>401</code></td>
+                            <td>Unauthorized</td>
+                            <td>
+<pre><code>{
+  "error": "Authentication failed",
+  "message": "API key is required",
+  "details": "Include X-API-Key header in your request"
+}</code></pre>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><code>403</code></td>
+                            <td>Forbidden</td>
+                            <td>
+<pre><code>{
+  "error": "Access denied",
+  "message": "Insufficient permissions",
+  "details": "This endpoint requires admin privileges"
+}</code></pre>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><code>404</code></td>
+                            <td>Not Found</td>
+                            <td>
+<pre><code>{
+  "error": "Resource not found",
+  "message": "The requested resource does not exist",
+  "details": "No referral found with ID 123"
+}</code></pre>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><code>405</code></td>
+                            <td>Method Not Allowed</td>
+                            <td>
+<pre><code>{
+  "error": "Method not allowed",
+  "message": "The method POST is not allowed for this endpoint",
+  "allowed_methods": ["GET", "PUT"]
+}</code></pre>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><code>429</code></td>
+                            <td>Too Many Requests</td>
+                            <td>
+<pre><code>{
+  "error": "Rate limit exceeded",
+  "message": "Maximum 100 requests per 3600 seconds",
+  "details": "Please wait before making more requests"
+}</code></pre>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="mb-0">API Endpoints</h3>
+        </div>
+        <div class="card-body">
+            <!-- Profile Endpoint -->
+            <div class="endpoint mb-4">
+                <h4>Get User Profile</h4>
+                <pre><code>GET /api/v1/profile</code></pre>
+                <p>Retrieve the authenticated user's profile information.</p>
+                <div class="example">
+                    <h5>Example Request:</h5>
+                    <pre><code>curl -H "X-API-Key: your_api_key" http://localhost:5000/api/v1/profile</code></pre>
+                    <h5>Example Response:</h5>
+                    <pre><code>{
+  "username": "john_doe",
+  "email": "john@example.com",
+  "role": "affiliate",
+  "affiliate": {
+    "id": 1,
+    "approved": true,
+    "total_earnings": 1250.50
+  }
+}</code></pre>
+                </div>
+            </div>
+
+            <!-- Referrals Endpoint -->
+            <div class="endpoint mb-4">
+                <h4>Create Referral</h4>
+                <pre><code>POST /api/v1/referrals</code></pre>
+                <p>Create a new referral for a treatment.</p>
+                <div class="example">
+                    <h5>Example Request:</h5>
+                    <pre><code>curl -X POST \
+  -H "X-API-Key: your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John",
+    "surname": "Doe",
+    "email": "patient@example.com",
+    "phone": "1234567890",
+    "treatment_id": 1
+  }' \
+  http://localhost:5000/api/v1/referrals</code></pre>
+                </div>
+            </div>
+
+            <div class="endpoint mb-4">
+                <h4>List Referrals</h4>
+                <pre><code>GET /api/v1/referrals</code></pre>
+                <p>Retrieve all referrals for the authenticated affiliate.</p>
+                <div class="example">
+                    <h5>Example Request:</h5>
+                    <pre><code>curl -H "X-API-Key: your_api_key" http://localhost:5000/api/v1/referrals</code></pre>
+                </div>
+            </div>
+
+            <!-- Update Referral Status Endpoint -->
+            <div class="endpoint mb-4">
+                <h4>Update Referral Status</h4>
+                <pre><code class="text-warning">PUT /api/v1/referrals/{id}/status</code></pre>
+                <div class="alert alert-warning">
+                    <i class="feather-alert-triangle"></i>
+                    <strong>Important:</strong> This endpoint only accepts PUT requests. Using other HTTP methods (GET, POST, DELETE) will result in a 405 Method Not Allowed error.
+                </div>
+                <div class="parameters">
+                    <h5>Parameters:</h5>
+                    <ul>
+                        <li><code>id</code> (path parameter) - The ID of the referral to update</li>
+                        <li><code>status</code> (required) - New status value (one of: new, in-progress, completed)</li>
+                    </ul>
+                </div>
+                <div class="example">
+                    <h5>Correct Usage (PUT request):</h5>
+                    <pre><code>curl -X PUT \
+  -H "X-API-Key: your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "completed"
+  }' \
+  http://localhost:5000/api/v1/referrals/1/status</code></pre>
+                    <h5>Incorrect Usage (GET request):</h5>
+                    <pre><code class="text-danger">curl -H "X-API-Key: your_api_key" http://localhost:5000/api/v1/referrals/1/status</code></pre>
+                    <h5>Error Response for Incorrect Method:</h5>
+                    <pre><code>{
+  "error": "Method not allowed",
+  "details": "The method GET is not allowed for this endpoint. Please refer to the API documentation for supported methods."
+}</code></pre>
+                    <h5>Successful Response:</h5>
+                    <pre><code>{
+  "id": 1,
+  "name": "John",
+  "surname": "Doe",
+  "email": "patient@example.com",
+  "phone": "1234567890",
+  "status": "completed",
+  "commission_amount": 100.00,
+  "treatment_value": 1000.00,
+  "created_at": "2024-11-17 10:30:00",
+  "treatment": {
+    "id": 1,
+    "name": "Example Treatment",
+    "description": "Treatment description",
+    "group": {
+      "id": 1,
+      "name": "Example Group",
+      "commission_amount": 100.00
+    }
+  }
+}</code></pre>
+                </div>
+            </div>
+
+            <!-- Treatments Endpoint -->
+            <div class="endpoint mb-4">
+                <h4>List Treatments</h4>
+                <pre><code>GET /api/v1/treatments</code></pre>
+                <p>Retrieve all active treatments.</p>
+                <div class="example">
+                    <h5>Example Request:</h5>
+                    <pre><code>curl -H "X-API-Key: your_api_key" http://localhost:5000/api/v1/treatments</code></pre>
+                </div>
+            </div>
+
+            <!-- Statistics Endpoint -->
+            <div class="endpoint mb-4">
+                <h4>Get Statistics</h4>
+                <pre><code>GET /api/v1/stats</code></pre>
+                <p>Retrieve statistics for the authenticated affiliate.</p>
+                <div class="example">
+                    <h5>Example Request:</h5>
+                    <pre><code>curl -H "X-API-Key: your_api_key" http://localhost:5000/api/v1/stats</code></pre>
+                    <h5>Example Response:</h5>
+                    <pre><code>{
+  "total_referrals": 25,
+  "completed_referrals": 15,
+  "conversion_rate": 60.0,
+  "total_earnings": 1250.50
+}</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3 class="mb-0">Error Handling</h3>
+        </div>
+        <div class="card-body">
+            <p>The API uses standard HTTP response codes:</p>
+            <ul>
+                <li><code>200</code> - Success</li>
+                <li><code>201</code> - Created</li>
+                <li><code>400</code> - Bad Request</li>
+                <li><code>401</code> - Unauthorized</li>
+                <li><code>403</code> - Forbidden</li>
+                <li><code>404</code> - Not Found</li>
+                <li><code>405</code> - Method Not Allowed</li>
+                <li><code>500</code> - Internal Server Error</li>
+            </ul>
+            <p>Error responses include a message explaining the error:</p>
+            <pre><code>{
+  "error": "Error message here",
+  "details": "Additional error details (optional)"
+}</code></pre>
+        </div>
+    </div>
+</div>
+
+<style>
+.endpoint {
+    border-bottom: 1px solid var(--bs-border-color);
+    padding-bottom: 1rem;
+}
+.endpoint:last-child {
+    border-bottom: none;
+}
+pre {
+    background: var(--bs-dark);
+    padding: 1rem;
+    border-radius: 0.375rem;
+    margin: 1rem 0;
+}
+code {
+    color: var(--bs-info);
+}
+.parameters ul {
+    list-style: none;
+    padding-left: 0;
+}
+.parameters li {
+    margin-bottom: 0.5rem;
+}
+.alert-warning code {
+    color: inherit;
+}
+.text-danger {
+    color: var(--bs-danger) !important;
+}
+.text-warning {
+    color: var(--bs-warning) !important;
+}
+</style>
+{% endblock %}

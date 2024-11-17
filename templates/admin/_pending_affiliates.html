@@ -1,0 +1,41 @@
+<!-- Pending Affiliates -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h3>Pending Affiliates</h3>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Registration Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for affiliate in pending_affiliates %}
+                    <tr>
+                        <td>{{ affiliate.user.username }}</td>
+                        <td>{{ affiliate.user.email }}</td>
+                        <td>{{ affiliate.user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('admin.approve_affiliate', id=affiliate.id) }}" class="d-inline">
+                                <button type="submit" class="btn btn-success btn-sm">Approve</button>
+                            </form>
+                            <form method="POST" action="{{ url_for('admin.reject_affiliate', id=affiliate.id) }}" class="d-inline">
+                                <button type="submit" class="btn btn-danger btn-sm">Reject</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center">No pending affiliates</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

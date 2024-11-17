@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Admin Dashboard</h1>
+        <div class="date-filter">
+            <div class="input-group">
+                <input type="date" class="form-control" id="start-date">
+                <input type="date" class="form-control" id="end-date">
+            </div>
+        </div>
+    </div>
+
+    <!-- Analytics Overview -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Referrals</h5>
+                    <h2 class="card-text">{{ analytics.total_referrals }}</h2>
+                    <p class="text-muted">Growth: {{ analytics.monthly_growth_rate }}%</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Conversion Rate</h5>
+                    <h2 class="card-text">{{ analytics.conversion_rate }}%</h2>
+                    <p class="text-muted">Completed referrals</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Commissions</h5>
+                    <h2 class="card-text">${{ analytics.total_commissions|round(2) }}</h2>
+                    <p class="text-muted">Issued to affiliates</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Active Affiliates</h5>
+                    <h2 class="card-text">{{ affiliates|length }}</h2>
+                    <p class="text-muted">{{ pending_affiliates|length }} pending</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Referral Status Distribution</h5>
+                    <canvas id="referralTrends"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Commission Distribution</h5>
+                    <canvas id="commissionDistribution"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Affiliates -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Top Performing Affiliates</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Affiliate</th>
+                            <th>Total Referrals</th>
+                            <th>Completed</th>
+                            <th>Commission Rate</th>
+                            <th>Total Earnings</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for affiliate, total, completed in top_affiliates %}
+                        <tr>
+                            <td>{{ affiliate.user.username }}</td>
+                            <td>{{ total }}</td>
+                            <td>{{ completed }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('admin.update_commission_rate', id=affiliate.id) }}" 
+                                      class="commission-form">
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" class="form-control" name="commission_rate" 
+                                               value="{{ affiliate.commission_rate }}" step="0.01" min="0" max="100">
+                                        <span class="input-group-text">%</span>
+                                        <button type="submit" class="btn btn-secondary">Update</button>
+                                    </div>
+                                </form>
+                            </td>
+                            <td>${{ affiliate.total_earnings|round(2) }}</td>
+                            <td>
+                                <a href="{{ url_for('admin.affiliate_details', id=affiliate.id) }}" 
+                                   class="btn btn-sm btn-info">View Details</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Affiliates and Recent Referrals -->
+    {% include "admin/_pending_affiliates.html" %}
+    {% include "admin/_recent_referrals.html" %}
+</div>
+
+<!-- Hidden analytics data for JavaScript -->
+<script id="analytics-data" type="application/json">
+    {{ analytics|tojson|safe }}
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/analytics.js') }}"></script>
+{% endblock %}

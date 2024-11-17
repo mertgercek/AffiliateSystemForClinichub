@@ -1,0 +1,59 @@
+<!-- Recent Referrals -->
+<div class="card">
+    <div class="card-header">
+        <h3>Recent Referrals</h3>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Patient</th>
+                        <th>Treatment</th>
+                        <th>Affiliate</th>
+                        <th>Status</th>
+                        <th>Outcome</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for referral in referrals[:10] %}
+                    <tr>
+                        <td>{{ referral.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ referral.name }} {{ referral.surname }}</td>
+                        <td>{{ referral.treatment.name }}</td>
+                        <td>{{ referral.affiliate.user.username }}</td>
+                        <td>
+                            <span class="badge referral-status-{{ referral.status }}">
+                                {{ referral.status }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if referral.treatment_status and referral.treatment_status.outcome %}
+                                <span class="badge bg-{{ 'success' if referral.treatment_status.outcome == 'success' 
+                                    else 'warning' if referral.treatment_status.outcome == 'partial' 
+                                    else 'danger' }}">
+                                    {{ referral.treatment_status.outcome }}
+                                </span>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('admin.update_treatment_status', id=referral.id) }}" 
+                               class="btn btn-sm btn-primary">
+                                Update Status
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center">No referrals yet</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

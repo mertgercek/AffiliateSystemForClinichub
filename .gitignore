@@ -1,0 +1,9 @@
+/.cache
+/.env
+/.local
+/.pythonlibs
+/.replit
+/.upm
+/replit.nix
+/replit_zip_error_log.txt
+/__pycache__

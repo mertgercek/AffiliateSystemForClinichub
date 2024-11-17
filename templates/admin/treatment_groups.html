@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Treatment Groups{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Treatment Groups</h1>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTreatmentGroupModal">
+            Add Treatment Group
+        </button>
+    </div>
+
+    {% if treatment_groups %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Fixed Commission</th>
+                    <th>Treatments</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for group in treatment_groups %}
+                <tr>
+                    <td>{{ group.name }}</td>
+                    <td>{{ group.description }}</td>
+                    <td>${{ group.commission_amount }}</td>
+                    <td>
+                        {% for treatment in group.treatments %}
+                            <span class="badge bg-secondary me-1">{{ treatment.name }}</span>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#editTreatmentGroupModal{{ group.id }}">
+                            Edit
+                        </button>
+                    </td>
+                </tr>
+
+                <!-- Edit Treatment Group Modal -->
+                <div class="modal fade" id="editTreatmentGroupModal{{ group.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Edit Treatment Group</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <form method="POST" action="{{ url_for('admin.edit_treatment_group', id=group.id) }}">
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label for="name{{ group.id }}" class="form-label">Name</label>
+                                        <input type="text" class="form-control" id="name{{ group.id }}" 
+                                               name="name" value="{{ group.name }}" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="description{{ group.id }}" class="form-label">Description</label>
+                                        <textarea class="form-control" id="description{{ group.id }}" 
+                                                 name="description" rows="3">{{ group.description }}</textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="commission{{ group.id }}" class="form-label">Fixed Commission Amount ($)</label>
+                                        <input type="number" step="0.01" min="0" class="form-control" 
+                                               id="commission{{ group.id }}" name="commission_amount" 
+                                               value="{{ group.commission_amount }}" required>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <button type="submit" class="btn btn-primary">Save changes</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">No treatment groups found. Add your first group using the button above.</div>
+    {% endif %}
+
+    <!-- Add Treatment Group Modal -->
+    <div class="modal fade" id="addTreatmentGroupModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Treatment Group</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" action="{{ url_for('admin.add_treatment_group') }}">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="commission" class="form-label">Fixed Commission Amount ($)</label>
+                            <input type="number" step="0.01" min="0" class="form-control" 
+                                   id="commission" name="commission_amount" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Add Group</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

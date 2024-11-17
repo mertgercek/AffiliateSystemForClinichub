@@ -1,0 +1,105 @@
+/* Status badges */
+.referral-status-new {
+    background-color: var(--bs-info);
+    color: var(--bs-light);
+}
+
+.referral-status-in-progress {
+    background-color: var(--bs-warning);
+    color: var(--bs-dark);
+}
+
+.referral-status-completed {
+    background-color: var(--bs-success);
+    color: var(--bs-light);
+}
+
+/* Card enhancements */
+.card {
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.shadow-sm {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Stats cards */
+.stats-card {
+    overflow: hidden;
+}
+
+.stats-card:hover {
+    transform: translateY(-2px);
+}
+
+.stats-card .feather {
+    width: 20px;
+    height: 20px;
+}
+
+/* Table enhancements */
+.table th.sortable {
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.table th.sortable .sort-icon {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+}
+
+.table th.sortable:hover .sort-icon {
+    opacity: 1;
+}
+
+.table th.sort-asc .sort-icon {
+    transform: rotate(180deg);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .table-responsive {
+        margin: 0 -1rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .stats-card {
+        margin-bottom: 1rem;
+    }
+    
+    .btn-group {
+        flex-wrap: wrap;
+    }
+}
+
+/* Smooth transitions */
+.referral-row {
+    transition: background-color 0.2s ease;
+}
+
+.badge {
+    transition: all 0.2s ease;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.text-muted {
+    font-size: 0.875rem;
+}
