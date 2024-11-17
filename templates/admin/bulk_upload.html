@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Bulk Upload{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Bulk Upload</h2>
+
+    <!-- Treatment Groups Upload -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">Treatment Groups</h3>
+                <a href="{{ url_for('admin.download_template', type='treatment_groups') }}" class="btn btn-sm btn-secondary">
+                    Download Template
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('admin.bulk_upload_treatment_groups') }}" method="POST" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label class="form-label">Upload Treatment Groups CSV</label>
+                    <input type="file" class="form-control" name="file" accept=".csv" required>
+                    <div class="form-text">
+                        CSV Format: name,description,commission_amount
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Upload Treatment Groups</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Treatments Upload -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">Treatments</h3>
+                <a href="{{ url_for('admin.download_template', type='treatments') }}" class="btn btn-sm btn-secondary">
+                    Download Template
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('admin.bulk_upload_treatments') }}" method="POST" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label class="form-label">Upload Treatments CSV</label>
+                    <input type="file" class="form-control" name="file" accept=".csv" required>
+                    <div class="form-text">
+                        CSV Format: name,description,group_name,active,average_duration
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Upload Treatments</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Treatment Mappings Upload -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">Treatment Mappings</h3>
+                <a href="{{ url_for('admin.download_template', type='mappings') }}" class="btn btn-sm btn-secondary">
+                    Download Template
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('admin.bulk_upload_mappings') }}" method="POST" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label class="form-label">Upload Mappings CSV</label>
+                    <input type="file" class="form-control" name="file" accept=".csv" required>
+                    <div class="form-text">
+                        CSV Format: external_name,treatment_group_name
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Upload Mappings</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Results Section (for displaying upload results) -->
+    {% if results %}
+    <div class="card">
+        <div class="card-header">
+            <h3 class="mb-0">Upload Results</h3>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-{{ 'success' if results.success else 'danger' }}">
+                <h4 class="alert-heading">{{ results.message }}</h4>
+                {% if results.details %}
+                <hr>
+                <ul class="mb-0">
+                    {% for detail in results.details %}
+                    <li>{{ detail }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %} 

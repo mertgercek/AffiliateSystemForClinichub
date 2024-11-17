@@ -5,6 +5,9 @@
 {% block head %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+<script src="https://www.google.com/recaptcha/api.js?render={{ config.RECAPTCHA_SITE_KEY }}"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/css/intlTelInput.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/phone-input-with-flags@1.0.1/build/css/phone-input-with-flags.min.css">
 <style>
     /* Modern gradient styles */
     .hero-section {
@@ -216,6 +219,108 @@
             transform: translateX(0);
         }
     }
+
+    .iti {
+        width: 100%;
+    }
+
+    .iti__flag {
+        background-image: url("https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/img/flags.png");
+    }
+
+    @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+        .iti__flag {
+            background-image: url("https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/img/flags@2x.png");
+        }
+    }
+
+    .iti__selected-flag {
+        padding: 0 12px;
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    .iti__country-list {
+        max-width: 400px;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .form-control-lg + .iti__flag-container .iti__selected-flag {
+        height: 100%;
+    }
+
+    .iti__country {
+        padding: 8px 12px;
+    }
+
+    /* Phone input styles */
+    .phone-input-container {
+        position: relative;
+        width: 100%;
+    }
+
+    .phone-input {
+        padding-left: 90px !important;
+    }
+
+    .country-select {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 80px;
+        border: none;
+        background-color: rgba(0, 0, 0, 0.05);
+        border-radius: 0.5rem 0 0 0.5rem;
+        display: flex;
+        align-items: center;
+        padding: 0 8px;
+    }
+
+    .country-flag {
+        width: 24px;
+        height: 18px;
+        margin-right: 4px;
+    }
+
+    .input-group select.form-select {
+        border-radius: 0.5rem 0 0 0.5rem;
+    }
+
+    .input-group input.form-control {
+        border-radius: 0 0.5rem 0.5rem 0;
+    }
+
+    #phoneHelp {
+        color: #6c757d;
+        font-size: 0.875em;
+        margin-top: 0.25rem;
+    }
+
+    /* Add these animation-related styles */
+    .opacity-0 {
+        opacity: 0;
+    }
+
+    .animate__animated {
+        --animate-duration: 1s;
+        --animate-delay: 0s;
+    }
+
+    .animate__delay-1s {
+        --animate-delay: 1s;
+    }
+
+    .animate__delay-2s {
+        --animate-delay: 2s;
+    }
+
+    /* Optional: Reduce animation duration on mobile */
+    @media (max-width: 768px) {
+        .animate__animated {
+            --animate-duration: 0.5s;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -264,18 +369,22 @@
         <div class="container">
             <div class="row text-center g-4">
                 <div class="col-6 col-md-3">
+                    <i class="bi bi-globe-americas text-primary mb-3 fs-1"></i>
                     <div class="stats-counter display-3 fw-bold" data-target="70">0</div>
                     <div class="stats-label">Countries Served</div>
                 </div>
                 <div class="col-6 col-md-3">
+                    <i class="bi bi-people-fill text-primary mb-3 fs-1"></i>
                     <div class="stats-counter display-3 fw-bold" data-target="60000">0</div>
                     <div class="stats-label">Happy Patients</div>
                 </div>
                 <div class="col-6 col-md-3">
+                    <i class="bi bi-hospital text-primary mb-3 fs-1"></i>
                     <div class="stats-counter display-3 fw-bold" data-target="15">0</div>
                     <div class="stats-label">Expert Doctors</div>
                 </div>
                 <div class="col-6 col-md-3">
+                    <i class="bi bi-award-fill text-primary mb-3 fs-1"></i>
                     <div class="stats-counter display-3 fw-bold" data-target="98">0</div>
                     <div class="stats-label">Success Rate</div>
                 </div>
@@ -287,19 +396,27 @@
     <section id="treatments" class="py-5">
         <div class="container">
             <div class="text-center mb-5">
-                <h2 class="display-5 fw-bold text-primary">Our Treatments</h2>
-                <p class="lead text-muted">Discover our range of specialized medical treatments</p>
+                <h2 class="display-5 fw-bold text-primary">Our Treatment Groups</h2>
+                <p class="lead text-muted">Discover our specialized medical treatment categories</p>
             </div>
             <div class="row g-4">
-                {% for treatment in treatments %}
+                {% for group in treatment_groups %}
                 <div class="col-md-4">
                     <div class="treatment-card">
                         <div class="card-body">
                             <div class="treatment-icon">
                                 <i class="fas fa-heart-pulse fs-3 text-white"></i>
                             </div>
-                            <h3 class="card-title">{{ treatment.name }}</h3>
-                            <p class="card-text">{{ treatment.description }}</p>
+                            <h3 class="card-title">{{ group.name }}</h3>
+                            <p class="card-text">{{ group.description }}</p>
+                            <div class="treatment-list">
+                                <small class="text-muted">Available Treatments:</small>
+                                <ul class="list-unstyled mt-2">
+                                    {% for treatment in group.treatments if treatment.active %}
+                                    <li><i class="fas fa-check-circle text-success me-2"></i>{{ treatment.name }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
                             <a href="#consultation" class="treatment-link">
                                 Learn More 
                                 <i class="fas fa-arrow-right"></i>
@@ -325,33 +442,58 @@
                         <form method="POST" action="{{ url_for('affiliate.create_referral', slug=affiliate.slug) }}" 
                               id="referralForm" class="needs-validation" novalidate>
                             <div class="row g-4">
-                                <div class="col-md-6">
+                                <div class="mb-3">
                                     <label class="form-label" for="name">First Name</label>
                                     <input type="text" class="form-control form-control-lg" id="name" name="name" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label" for="surname">Last Name</label>
-                                    <input type="text" class="form-control form-control-lg" id="surname" name="surname" required>
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label" for="email">Email Address</label>
-                                    <input type="email" class="form-control form-control-lg" id="email" name="email" required>
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label" for="phone">Phone Number</label>
-                                    <div class="input-group input-group-lg">
-                                        <span class="input-group-text">+</span>
-                                        <input type="tel" class="form-control" id="phone" name="phone" required>
+                                    <div class="invalid-feedback">
+                                        Please enter your first name
                                     </div>
                                 </div>
-                                <div class="col-12">
-                                    <label class="form-label" for="treatment">Preferred Treatment</label>
-                                    <select class="form-select form-select-lg" id="treatment" name="treatment_id" required>
-                                        <option value="">Select a treatment...</option>
-                                        {% for treatment in treatments %}
-                                        <option value="{{ treatment.id }}">{{ treatment.name }}</option>
+                                <div class="mb-3">
+                                    <label class="form-label" for="surname">Last Name</label>
+                                    <input type="text" class="form-control form-control-lg" id="surname" name="surname" required>
+                                    <div class="invalid-feedback">
+                                        Please enter your last name
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" for="email">Email Address</label>
+                                    <input type="email" class="form-control form-control-lg" id="email" name="email" required>
+                                    <div class="invalid-feedback">
+                                        Please enter a valid email address
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" for="phone">Phone Number</label>
+                                    <div class="input-group">
+                                        <select class="form-select flex-shrink-1" style="max-width: 160px;" id="countrySelect">
+                                            {% for country in countries %}
+                                            <option value="{{ country.code }}" 
+                                                    data-code="{{ country.dial_code }}" 
+                                                    data-placeholder="{{ country.placeholder }}"
+                                                    {{ 'selected' if country.code == 'TR' }}>
+                                                {{ country.name }} {{ country.code|flag }} {{ country.dial_code }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                        <input type="tel" class="form-control form-control-lg" id="phone" name="phone" required>
+                                    </div>
+                                    <div class="invalid-feedback">
+                                        Please enter a valid phone number
+                                    </div>
+                                    <div class="form-text" id="phoneHelp"></div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" for="treatment_group">Treatment Group</label>
+                                    <select class="form-select form-select-lg" id="treatment_group" name="treatment_group_id" required>
+                                        <option value="">Select a treatment group...</option>
+                                        {% for group in treatment_groups %}
+                                        <option value="{{ group.id }}">{{ group.name }}</option>
                                         {% endfor %}
                                     </select>
+                                    <div class="invalid-feedback">
+                                        Please select a treatment group
+                                    </div>
                                 </div>
                                 <div class="col-12">
                                     <button type="submit" class="btn btn-primary w-100 btn-lg">
@@ -401,84 +543,192 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@18.2.1/build/js/intlTelInput.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Form validation
-    const form = document.getElementById('referralForm');
-    form.addEventListener('submit', function(event) {
-        if (!form.checkValidity()) {
-            event.preventDefault();
-            event.stopPropagation();
-        }
-        
-        const phone = document.getElementById('phone').value;
-        if (!phone.match(/^\d{1,15}$/)) {
-            event.preventDefault();
-            alert('Please enter only numbers for the phone number (without the + symbol).');
-            return false;
-        }
-        
-        form.classList.add('was-validated');
-    });
+    const countrySelect = document.getElementById('countrySelect');
+    const phoneInput = document.getElementById('phone');
+    const phoneHelp = document.getElementById('phoneHelp');
 
-    // Smooth scroll for anchor links
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            document.querySelector(this.getAttribute('href')).scrollIntoView({
-                behavior: 'smooth'
+    function updatePhonePlaceholder() {
+        const selectedOption = countrySelect.options[countrySelect.selectedIndex];
+        const placeholder = selectedOption.dataset.placeholder;
+        phoneInput.placeholder = placeholder;
+        phoneHelp.textContent = `Example: ${placeholder}`;
+    }
+
+    // Update placeholder on country change
+    countrySelect.addEventListener('change', updatePhonePlaceholder);
+
+    // Set initial placeholder
+    updatePhonePlaceholder();
+
+    // Get user's country and select it
+    fetch('/api/v1/geoip')
+        .then(response => response.json())
+        .then(data => {
+            const countryCode = data.country_code;
+            const option = countrySelect.querySelector(`option[value="${countryCode}"]`);
+            if (option) {
+                option.selected = true;
+                updatePhonePlaceholder();
+            }
+        })
+        .catch(() => console.log('Could not detect country'));
+
+    // Form submission handling
+    const form = document.getElementById('referralForm');
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Validate required fields
+        const requiredFields = form.querySelectorAll('[required]');
+        let isValid = true;
+        
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                isValid = false;
+                field.classList.add('is-invalid');
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+
+        // Validate phone number (basic validation)
+        const phoneNumber = phoneInput.value.trim();
+        if (!phoneNumber || phoneNumber.length < 8) {
+            isValid = false;
+            phoneInput.classList.add('is-invalid');
+            return;
+        } else {
+            phoneInput.classList.remove('is-invalid');
+        }
+        
+        if (!isValid) {
+            alert('Please fill in all required fields correctly');
+            return;
+        }
+        
+        // Get the full phone number with country code
+        const countryCode = countrySelect.options[countrySelect.selectedIndex].dataset.code;
+        const fullPhoneNumber = countryCode + phoneNumber.replace(/^0+/, '');
+        
+        // Create hidden input for the formatted phone number
+        const phoneNumberInput = document.createElement('input');
+        phoneNumberInput.type = 'hidden';
+        phoneNumberInput.name = 'formatted_phone';
+        phoneNumberInput.value = fullPhoneNumber;
+        form.appendChild(phoneNumberInput);
+        
+        grecaptcha.ready(function() {
+            grecaptcha.execute('{{ config.RECAPTCHA_SITE_KEY }}', {action: 'submit_referral'})
+            .then(function(token) {
+                const tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = 'recaptcha_token';
+                tokenInput.value = token;
+                form.appendChild(tokenInput);
+                form.submit();
+            })
+            .catch(function(error) {
+                console.error('reCAPTCHA error:', error);
+                alert('Error with security check. Please try again.');
             });
         });
     });
 });
-
-// Counter animation
-const counters = document.querySelectorAll('.stats-counter');
-const speed = 200; // The lower the faster
-
-const animateCounter = (counter) => {
-    const target = parseInt(counter.getAttribute('data-target'));
-    let count = 0;
-    const inc = target / speed;
-
-    const updateCount = () => {
-        if (count < target) {
-            count += inc;
-            // Format the number based on size
-            if (target >= 1000) {
-                counter.innerText = Math.floor(count/1000) + 'K+';
-            } else {
-                counter.innerText = Math.floor(count) + '+';
-            }
-            setTimeout(updateCount, 1);
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const groupSelect = document.getElementById('treatment_group');
+    const treatmentSelect = document.getElementById('treatment');
+    
+    groupSelect.addEventListener('change', function() {
+        const groupId = this.value;
+        treatmentSelect.disabled = !groupId;
+        
+        if (groupId) {
+            fetch(`/affiliate/api/treatments/${groupId}`)
+                .then(response => response.json())
+                .then(treatments => {
+                    treatmentSelect.innerHTML = '<option value="">Select a treatment...</option>' +
+                        treatments.map(t => 
+                            `<option value="${t.id}">${t.name}</option>`
+                        ).join('');
+                });
         } else {
-            if (target >= 1000) {
-                counter.innerText = (target/1000) + 'K+';
-            } else {
-                counter.innerText = target + '+';
-            }
-        }
-    };
-
-    updateCount();
-}
-
-// Start animation when element is in viewport
-const observerOptions = {
-    threshold: 0.5
-};
-
-const observer = new IntersectionObserver((entries, observer) => {
-    entries.forEach(entry => {
-        if (entry.isIntersecting) {
-            animateCounter(entry.target);
-            observer.unobserve(entry.target);
+            treatmentSelect.innerHTML = '<option value="">First select a treatment group...</option>';
         }
     });
-}, observerOptions);
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const counters = document.querySelectorAll('.stats-counter');
+    const speed = 200;
 
-counters.forEach(counter => {
-    observer.observe(counter);
+    const animateCounter = (counter) => {
+        const target = parseInt(counter.getAttribute('data-target'));
+        let count = 0;
+        const increment = target / speed;
+
+        const updateCount = () => {
+            count += increment;
+            if (count < target) {
+                counter.innerText = `${Math.ceil(count)}+`;
+                requestAnimationFrame(updateCount);
+            } else {
+                counter.innerText = `${target}+`;
+            }
+        };
+
+        updateCount();
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                animateCounter(entry.target);
+                observer.unobserve(entry.target);
+            }
+        });
+    });
+
+    counters.forEach(counter => observer.observe(counter));
+});
+</script>
+<script>
+// Add this new animation code
+document.addEventListener('DOMContentLoaded', function() {
+    // Animation for hero section elements
+    const animatedElements = document.querySelectorAll('.animate__animated');
+    
+    const animationObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            // When element enters viewport
+            if (entry.isIntersecting) {
+                // Remove initial opacity-0 if it exists
+                entry.target.classList.remove('opacity-0');
+                // Make sure animate__animated class is present
+                entry.target.classList.add('animate__animated');
+                // Get the animation class from data attribute or use fadeIn as default
+                const animationClass = entry.target.dataset.animation || 'animate__fadeIn';
+                entry.target.classList.add(animationClass);
+                // Optional: Stop observing after animation
+                animationObserver.unobserve(entry.target);
+            }
+        });
+    }, {
+        threshold: 0.1 // Trigger when at least 10% of the element is visible
+    });
+
+    // Start observing all animated elements
+    animatedElements.forEach(element => {
+        // Optional: Add opacity-0 to prevent flash of content
+        element.classList.add('opacity-0');
+        animationObserver.observe(element);
+    });
 });
 </script>
 {% endblock %}

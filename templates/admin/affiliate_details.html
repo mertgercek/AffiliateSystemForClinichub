@@ -2,6 +2,10 @@
 
 {% block title %}Affiliate Details - {{ affiliate.user.username }}{% endblock %}
 
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+{% endblock %}
+
 {% block content %}
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -20,9 +24,23 @@
                     <p><strong>Username:</strong> {{ affiliate.user.username }}</p>
                     <p><strong>Email:</strong> {{ affiliate.user.email }}</p>
                     <p><strong>Registration Date:</strong> {{ affiliate.user.created_at.strftime('%Y-%m-%d') }}</p>
+                    {% if affiliate.country %}
+                    <p>
+                        <strong>Location:</strong>
+                        <span class="d-inline-flex align-items-center">
+                            <img src="https://flagcdn.com/24x18/{{ affiliate.country.lower() }}.png" 
+                                 alt="{{ affiliate.country }}" class="me-2">
+                            {{ affiliate.city }}, {{ affiliate.country }}
+                            <button class="btn btn-sm btn-outline-primary ms-2" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#locationModal">
+                                <i class="bi bi-map"></i> View Map
+                            </button>
+                        </span>
+                    </p>
+                    {% endif %}
                 </div>
                 <div class="col-md-6">
-                    <p><strong>Commission Rate:</strong> {{ affiliate.commission_rate }}%</p>
                     <p><strong>Total Earnings:</strong> ${{ affiliate.total_earnings|round(2) }}</p>
                     <p><strong>Status:</strong> 
                         <span class="badge {% if affiliate.approved %}bg-success{% else %}bg-warning{% endif %}">
@@ -109,32 +127,34 @@
             </div>
         </div>
     </div>
-</div>
 
-<!-- Charts Section -->
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Referral Status Distribution</h5>
-                    <canvas id="statusChart"></canvas>
+    <!-- Location Modal -->
+    {% if affiliate.latitude and affiliate.longitude %}
+    <div class="modal fade" id="locationModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <img src="https://flagcdn.com/24x18/{{ affiliate.country.lower() }}.png" 
+                             alt="{{ affiliate.country }}" class="me-2">
+                        {{ affiliate.city }}, {{ affiliate.country }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Monthly Earnings</h5>
-                    <canvas id="earningsChart"></canvas>
+                <div class="modal-body p-0">
+                    <iframe src="{{ url_for('admin.affiliate_map_content', id=affiliate.id) }}" 
+                            style="width: 100%; height: 500px; border: none;"
+                            allowfullscreen></iframe>
                 </div>
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
 {% endblock %}
 
 {% block scripts %}
+<!-- Chart.js scripts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -177,4 +197,29 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+
+<!-- Map scripts -->
+{% if affiliate.latitude and affiliate.longitude %}
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+document.getElementById('locationModal').addEventListener('shown.bs.modal', function () {
+    // Initialize map only when modal is shown
+    const map = L.map('affiliateMap').setView([{{ affiliate.latitude }}, {{ affiliate.longitude }}], 10);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+    
+    L.marker([{{ affiliate.latitude }}, {{ affiliate.longitude }}])
+        .addTo(map)
+        .bindPopup('{{ affiliate.user.username }}\'s Location')
+        .openPopup();
+        
+    // Trigger a resize event to ensure the map renders correctly
+    setTimeout(() => {
+        map.invalidateSize();
+    }, 100);
+});
+</script>
+{% endif %}
 {% endblock %}

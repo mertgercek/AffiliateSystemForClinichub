@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Referrals{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Referral Management</h2>
+        <div class="filters">
+            <div class="input-group">
+                <select class="form-select" id="statusFilter">
+                    <option value="all">All Status</option>
+                    <option value="new">New</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                </select>
+                <input type="text" class="form-control" id="searchInput" placeholder="Search...">
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table" id="referralsTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Patient</th>
+                            <th>Contact</th>
+                            <th>Treatment</th>
+                            <th>Affiliate</th>
+                            <th>Location</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for referral in referrals %}
+                        <tr data-status="{{ referral.status }}">
+                            <td>{{ referral.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ referral.name }} {{ referral.surname }}</td>
+                            <td>
+                                <small>
+                                    <div>{{ referral.email }}</div>
+                                    <div>{{ referral.phone }}</div>
+                                </small>
+                            </td>
+                            <td>{{ referral.treatment.name }}</td>
+                            <td>
+                                <a href="{{ url_for('admin.affiliate_details', id=referral.affiliate.id) }}">
+                                    {{ referral.affiliate.user.username }}
+                                </a>
+                            </td>
+                            <td>
+                                {% if referral.country %}
+                                <div class="d-flex align-items-center">
+                                    <img src="https://flagcdn.com/24x18/{{ referral.country.lower() }}.png" 
+                                         alt="{{ referral.country }}" class="me-2">
+                                    {{ referral.city }}, {{ referral.country }}
+                                </div>
+                                {% else %}
+                                <span class="text-muted">Unknown</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <select class="form-select form-select-sm status-select" 
+                                        data-referral-id="{{ referral.id }}">
+                                    <option value="new" 
+                                            {% if referral.status == 'new' %}selected{% endif %}>
+                                        New
+                                    </option>
+                                    <option value="in-progress" 
+                                            {% if referral.status == 'in-progress' %}selected{% endif %}>
+                                        In Progress
+                                    </option>
+                                    <option value="completed" 
+                                            {% if referral.status == 'completed' %}selected{% endif %}>
+                                        Completed
+                                    </option>
+                                </select>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#notesModal{{ referral.id }}">
+                                    Notes
+                                </button>
+                                <button class="btn btn-sm btn-info" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#detailsModal{{ referral.id }}">
+                                    Details
+                                </button>
+                            </td>
+                        </tr>
+
+                        <!-- Notes Modal -->
+                        <div class="modal fade" id="notesModal{{ referral.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Treatment Notes</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form class="notes-form" data-referral-id="{{ referral.id }}">
+                                            <div class="mb-3">
+                                                <label class="form-label">Notes</label>
+                                                <textarea class="form-control" rows="4" name="notes">{{ referral.treatment_status.notes if referral.treatment_status else '' }}</textarea>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">Save Notes</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Details Modal -->
+                        <div class="modal fade" id="detailsModal{{ referral.id }}" tabindex="-1">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Referral Details</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <h6>Patient Information</h6>
+                                                <dl class="row">
+                                                    <dt class="col-sm-4">Name</dt>
+                                                    <dd class="col-sm-8">{{ referral.name }} {{ referral.surname }}</dd>
+                                                    
+                                                    <dt class="col-sm-4">Email</dt>
+                                                    <dd class="col-sm-8">{{ referral.email }}</dd>
+                                                    
+                                                    <dt class="col-sm-4">Phone</dt>
+                                                    <dd class="col-sm-8">{{ referral.phone }}</dd>
+                                                    
+                                                    {% if referral.country %}
+                                                    <dt class="col-sm-4">Location</dt>
+                                                    <dd class="col-sm-8">
+                                                        <img src="https://flagcdn.com/24x18/{{ referral.country.lower() }}.png" 
+                                                             alt="{{ referral.country }}" class="me-2">
+                                                        {{ referral.city }}, {{ referral.country }}
+                                                    </dd>
+                                                    {% endif %}
+                                                </dl>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <h6>Treatment Information</h6>
+                                                <dl class="row">
+                                                    <dt class="col-sm-4">Treatment</dt>
+                                                    <dd class="col-sm-8">{{ referral.treatment.name }}</dd>
+                                                    
+                                                    <dt class="col-sm-4">Group</dt>
+                                                    <dd class="col-sm-8">{{ referral.treatment.group.name }}</dd>
+                                                    
+                                                    <dt class="col-sm-4">Status</dt>
+                                                    <dd class="col-sm-8">{{ referral.status }}</dd>
+                                                    
+                                                    <dt class="col-sm-4">Created</dt>
+                                                    <dd class="col-sm-8">{{ referral.created_at.strftime('%Y-%m-%d %H:%M') }}</dd>
+                                                </dl>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Handle status changes
+document.querySelectorAll('.status-select').forEach(select => {
+    select.addEventListener('change', function() {
+        const referralId = this.dataset.referralId;
+        const newStatus = this.value;
+        
+        fetch(`/admin/referral/${referralId}/status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ status: newStatus })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message
+                alert('Status updated successfully');
+            } else {
+                // Show error message
+                alert('Error updating status');
+                // Reset select to previous value
+                this.value = this.dataset.originalValue;
+            }
+        });
+    });
+});
+
+// Handle notes forms
+document.querySelectorAll('.notes-form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const referralId = this.dataset.referralId;
+        const notes = this.querySelector('textarea').value;
+        
+        fetch(`/admin/referral/${referralId}/notes`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ notes: notes })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Notes saved successfully');
+                // Close the modal
+                bootstrap.Modal.getInstance(this.closest('.modal')).hide();
+            } else {
+                alert('Error saving notes');
+            }
+        });
+    });
+});
+
+// Handle filtering and search
+document.getElementById('statusFilter').addEventListener('change', filterReferrals);
+document.getElementById('searchInput').addEventListener('input', filterReferrals);
+
+function filterReferrals() {
+    const statusFilter = document.getElementById('statusFilter').value;
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('#referralsTable tbody tr');
+
+    rows.forEach(row => {
+        const status = row.dataset.status;
+        const text = row.textContent.toLowerCase();
+        const matchesStatus = statusFilter === 'all' || status === statusFilter;
+        const matchesSearch = searchTerm === '' || text.includes(searchTerm);
+        
+        row.style.display = matchesStatus && matchesSearch ? '' : 'none';
+    });
+}
+</script>
+{% endblock %} 

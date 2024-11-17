@@ -35,6 +35,37 @@
                     <li><code>Access-Control-Max-Age: 3600</code></li>
                 </ul>
             </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3>Treatment Mapping System</h3>
+                </div>
+                <div class="card-body">
+                    <p>The treatment mapping system allows matching external treatment names with internal treatment groups:</p>
+                    
+                    <h5>How it works:</h5>
+                    <ol>
+                        <li>Admins configure mappings in the admin interface</li>
+                        <li>Each mapping connects an exact external treatment name to an internal treatment group</li>
+                        <li>When a treatment completion webhook is received, the system:
+                            <ul>
+                                <li>Looks up the treatment name in the mappings</li>
+                                <li>Identifies the corresponding treatment group</li>
+                                <li>Applies the group's commission rules</li>
+                            </ul>
+                        </li>
+                    </ol>
+
+                    <div class="alert alert-info">
+                        <strong>Best Practice:</strong> Configure treatment mappings before sending completion webhooks to ensure proper matching and commission calculation.
+                    </div>
+
+                    <h5>Example Mapping:</h5>
+                    <pre><code>External Name: "Premium Dental Implant Treatment"
+Internal Group: "Dental Implants"
+Commission: Based on the treatment group's configured amount</code></pre>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -267,6 +298,132 @@
   "conversion_rate": 60.0,
   "total_earnings": 1250.50
 }</code></pre>
+                </div>
+            </div>
+
+            <!-- CRM Integration - Treatment Completion Webhook -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3>CRM Integration - Treatment Completion Webhook</h3>
+                </div>
+                <div class="card-body">
+                    <h4>Endpoint</h4>
+                    <pre><code>POST /api/v1/webhook/treatment-completed</code></pre>
+
+                    <h4>Request Format</h4>
+                    <pre><code>{
+    "email": "patient@example.com",
+    "full_name": "John Doe",
+    "treatment_name": "Exact Treatment Name"
+}</code></pre>
+
+                    <h4>Response Format</h4>
+                    <pre><code>// Success
+{
+    "success": true,
+    "message": "Referral status updated successfully",
+    "referral_id": 123
+}
+
+// Error
+{
+    "success": false,
+    "error": "Error type",
+    "details": "Error details"
+}</code></pre>
+
+                    <h4>Authentication</h4>
+                    <p>Include your API key in the request headers:</p>
+                    <pre><code>X-API-Key: your_api_key_here</code></pre>
+
+                    <h4>Notes</h4>
+                    <ul>
+                        <li>The email address must match exactly with the referral record</li>
+                        <li>The treatment name must match a treatment in the system</li>
+                        <li>The treatment must belong to the same treatment group as the referral</li>
+                        <li>The system will automatically update the referral status to 'completed'</li>
+                        <li>Webhook notifications will be sent to configured endpoints</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Add this section under API Endpoints -->
+            <div class="endpoint mb-4">
+                <h4>Treatment Completion Webhook</h4>
+                <pre><code>POST /api/v1/webhook/treatment-completed</code></pre>
+                <p>Endpoint for CRM to notify about completed treatments. The system will automatically match the treatment with internal treatment groups and update referral status.</p>
+                
+                <div class="parameters">
+                    <h5>Request Body:</h5>
+                    <pre><code>{
+    "email": "patient@example.com",     // Patient's email (must match referral record)
+    "full_name": "John Doe",           // Patient's full name
+    "treatment_name": "Treatment XYZ"   // Exact treatment name as configured in mappings
+}</code></pre>
+                </div>
+
+                <div class="responses">
+                    <h5>Responses:</h5>
+                    <h6>Success (200)</h6>
+                    <pre><code>{
+    "success": true,
+    "message": "Referral status updated successfully",
+    "referral_id": 123,
+    "commission_amount": 100.00
+}</code></pre>
+
+                    <h6>Error - No Matching Referral (404)</h6>
+                    <pre><code>{
+    "success": false,
+    "error": "No matching referral found",
+    "details": "No referral found with email: patient@example.com"
+}</code></pre>
+
+                    <h6>Error - No Treatment Mapping (404)</h6>
+                    <pre><code>{
+    "success": false,
+    "error": "No matching treatment mapping found",
+    "details": "No mapping found for treatment: Treatment XYZ"
+}</code></pre>
+
+                    <h6>Error - Invalid Treatment Group (400)</h6>
+                    <pre><code>{
+    "success": false,
+    "error": "No active treatment found in mapped group",
+    "details": "The mapped treatment group has no active treatments"
+}</code></pre>
+                </div>
+
+                <div class="notes mt-4">
+                    <h5>Important Notes:</h5>
+                    <ul>
+                        <li>The email address must exactly match the one used in the referral</li>
+                        <li>Treatment names must be configured in the treatment mappings system</li>
+                        <li>The system will automatically:
+                            <ul>
+                                <li>Match the treatment name to a treatment group</li>
+                                <li>Update the referral status to 'completed'</li>
+                                <li>Calculate and assign commission based on the treatment group</li>
+                                <li>Update affiliate earnings</li>
+                                <li>Trigger webhook notifications to configured endpoints</li>
+                            </ul>
+                        </li>
+                        <li>Treatment mappings can be managed in the admin interface</li>
+                        <li>All monetary values are in USD</li>
+                    </ul>
+                </div>
+
+                <div class="example">
+                    <h5>Example Request:</h5>
+                    <pre><code>curl -X POST \
+  -H "X-API-Key: your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "patient@example.com",
+    "full_name": "John Doe",
+    "treatment_name": "Premium Dental Treatment"
+  }' \
+  http://localhost:5000/api/v1/webhook/treatment-completed</code></pre>
                 </div>
             </div>
         </div>

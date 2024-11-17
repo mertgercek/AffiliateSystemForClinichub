@@ -14,8 +14,11 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(256))
     role = db.Column(db.String(20), default='affiliate')
     email_verified = db.Column(db.Boolean, default=False)
-    verification_token = db.Column(db.String(100), unique=True, nullable=True)
+    verification_token = db.Column(db.String(100), unique=True)
+    token_expiry = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_seen = db.Column(db.DateTime, default=datetime.utcnow)
+    email_subscribed = db.Column(db.Boolean, default=True)
     
     affiliate = db.relationship('Affiliate', back_populates='user', uselist=False, cascade='all, delete-orphan')
     api_keys = db.relationship('APIKey', backref='user', lazy=True)
@@ -36,6 +39,27 @@ class User(UserMixin, db.Model):
         db.session.add(api_key)
         db.session.commit()
         return api_key
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'username': self.username,
+            'email': self.email,
+            'role': self.role,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        }
+
+    def verify_email(self):
+        """Verify user's email and approve affiliate if exists"""
+        self.email_verified = True
+        self.verification_token = None
+        self.token_expiry = None
+        
+        # Auto-approve affiliate if exists
+        if self.affiliate:
+            self.affiliate.approved = True
+            
+        db.session.commit()
 
 class APIKey(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -61,8 +85,14 @@ class Affiliate(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     slug = db.Column(db.String(20), unique=True)
     approved = db.Column(db.Boolean, default=False)
-    commission_rate = db.Column(db.Numeric(5, 2), default=0.00)
     total_earnings = db.Column(db.Numeric(10, 2), default=0.00)
+    
+    # Location fields
+    country = db.Column(db.String(2))      # ISO country code
+    city = db.Column(db.String(100))
+    latitude = db.Column(db.Float)
+    longitude = db.Column(db.Float)
+    ip_address = db.Column(db.String(45))  # IPv6 can be up to 45 chars
     
     user = db.relationship('User', back_populates='affiliate')
     referrals = db.relationship('Referral', backref='affiliate', lazy=True)
@@ -133,7 +163,6 @@ class Affiliate(db.Model):
         return {
             'id': self.id,
             'username': self.user.username,
-            'commission_rate': float(self.commission_rate or 0),
             'total_earnings': float(self.total_earnings or 0)
         }
 
@@ -184,6 +213,11 @@ class Referral(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     treatment_status = db.relationship('Treatment_Status', backref='referral', uselist=False)
+    ip_address = db.Column(db.String(45))  # IPv6 can be up to 45 chars
+    country = db.Column(db.String(2))      # ISO country code
+    city = db.Column(db.String(100))
+    latitude = db.Column(db.Float)
+    longitude = db.Column(db.Float)
 
     def validate_for_completion(self):
         """Validate if referral can be marked as completed"""
@@ -306,4 +340,98 @@ class Treatment_Status(db.Model):
             'end_date': self.end_date.strftime('%Y-%m-%d %H:%M:%S') if self.end_date else None,
             'notes': self.notes,
             'outcome': self.outcome
+        }
+
+class Ticket(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    subject = db.Column(db.String(200), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), default='open')  # open, in-progress, closed
+    priority = db.Column(db.String(20), default='normal')  # low, normal, high
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Foreign Keys
+    affiliate_id = db.Column(db.Integer, db.ForeignKey('affiliate.id'), nullable=False)
+    assigned_admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    
+    # Relationships
+    affiliate = db.relationship('Affiliate', backref='tickets')
+    assigned_admin = db.relationship('User', backref='assigned_tickets')
+    responses = db.relationship('TicketResponse', backref='ticket', lazy='dynamic', cascade='all, delete-orphan')
+
+class TicketResponse(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    message = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Foreign Keys
+    ticket_id = db.Column(db.Integer, db.ForeignKey('ticket.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # Relationship
+    user = db.relationship('User', backref='ticket_responses')
+
+class Notification(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    type = db.Column(db.String(50))  # 'new_ticket', 'pending_reply', etc.
+    message = db.Column(db.String(255))
+    link = db.Column(db.String(255))
+    read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', backref='notifications')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'type': self.type,
+            'message': self.message,
+            'link': self.link,
+            'read': self.read,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M')
+        }
+
+class Webhook(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    url = db.Column(db.String(500), nullable=False)
+    secret = db.Column(db.String(100), nullable=False)
+    events = db.Column(db.JSON, nullable=False, default=list)  # List of events to subscribe to
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_triggered = db.Column(db.DateTime)
+    failure_count = db.Column(db.Integer, default=0)
+    
+    user = db.relationship('User', backref='webhooks')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'url': self.url,
+            'events': self.events,
+            'is_active': self.is_active,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'last_triggered': self.last_triggered.strftime('%Y-%m-%d %H:%M:%S') if self.last_triggered else None,
+            'failure_count': self.failure_count
+        }
+
+class TreatmentNameMapping(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    external_name = db.Column(db.String(200), nullable=False, unique=True)  # Name from CRM
+    treatment_group_id = db.Column(db.Integer, db.ForeignKey('treatment_group.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    treatment_group = db.relationship('TreatmentGroup', backref='name_mappings')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'external_name': self.external_name,
+            'treatment_group_id': self.treatment_group_id,
+            'treatment_group_name': self.treatment_group.name
         }

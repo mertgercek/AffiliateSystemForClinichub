@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Ticket #{{ ticket.id }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Ticket Details -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h3 class="card-title">{{ ticket.subject }}</h3>
+                    <div class="d-flex justify-content-between mb-3">
+                        <div>
+                            <span class="badge bg-{{ 'success' if ticket.status == 'closed' 
+                                                else 'warning' if ticket.status == 'in-progress' 
+                                                else 'primary' }} me-2">
+                                {{ ticket.status }}
+                            </span>
+                            <span class="badge bg-{{ 'danger' if ticket.priority == 'high' 
+                                                else 'warning' if ticket.priority == 'normal' 
+                                                else 'info' }}">
+                                {{ ticket.priority }}
+                            </span>
+                        </div>
+                        <small class="text-muted">
+                            Created: {{ ticket.created_at.strftime('%Y-%m-%d %H:%M') }}
+                        </small>
+                    </div>
+                    <div class="ticket-message">
+                        {{ ticket.message|nl2br if ticket.message else '' }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Responses -->
+            {% for response in ticket.responses %}
+            <div class="card mb-3 {{ 'border-primary' if response.user.role == 'admin' }}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <strong>{{ response.user.username }}</strong>
+                        <small class="text-muted">
+                            {{ response.created_at.strftime('%Y-%m-%d %H:%M') }}
+                        </small>
+                    </div>
+                    <div class="response-message">
+                        {{ response.message|nl2br if response.message else '' }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- Reply Form -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Add Reply</h5>
+                    <form method="POST" action="{{ url_for('admin.reply_ticket', id=ticket.id) }}">
+                        <div class="mb-3">
+                            <textarea class="form-control" name="message" rows="4" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Send Reply</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Ticket Management -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Ticket Management</h5>
+                    <form method="POST" action="{{ url_for('admin.update_ticket', id=ticket.id) }}">
+                        <div class="mb-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" name="status">
+                                <option value="open" {% if ticket.status == 'open' %}selected{% endif %}>Open</option>
+                                <option value="in-progress" {% if ticket.status == 'in-progress' %}selected{% endif %}>In Progress</option>
+                                <option value="closed" {% if ticket.status == 'closed' %}selected{% endif %}>Closed</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Priority</label>
+                            <select class="form-select" name="priority">
+                                <option value="low" {% if ticket.priority == 'low' %}selected{% endif %}>Low</option>
+                                <option value="normal" {% if ticket.priority == 'normal' %}selected{% endif %}>Normal</option>
+                                <option value="high" {% if ticket.priority == 'high' %}selected{% endif %}>High</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Assign To</label>
+                            <select class="form-select" name="assigned_admin_id">
+                                <option value="">Unassigned</option>
+                                {% for admin in admins %}
+                                <option value="{{ admin.id }}" {% if ticket.assigned_admin_id == admin.id %}selected{% endif %}>
+                                    {{ admin.username }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Update Ticket</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Ticket Information -->
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Ticket Information</h5>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Affiliate</dt>
+                        <dd class="col-sm-8">{{ ticket.affiliate.user.username }}</dd>
+                        
+                        <dt class="col-sm-4">Status</dt>
+                        <dd class="col-sm-8">{{ ticket.status }}</dd>
+                        
+                        <dt class="col-sm-4">Priority</dt>
+                        <dd class="col-sm-8">{{ ticket.priority }}</dd>
+                        
+                        <dt class="col-sm-4">Created</dt>
+                        <dd class="col-sm-8">{{ ticket.created_at.strftime('%Y-%m-%d %H:%M') }}</dd>
+                        
+                        <dt class="col-sm-4">Updated</dt>
+                        <dd class="col-sm-8">{{ ticket.updated_at.strftime('%Y-%m-%d %H:%M') }}</dd>
+                        
+                        {% if ticket.assigned_admin %}
+                        <dt class="col-sm-4">Assigned To</dt>
+                        <dd class="col-sm-8">{{ ticket.assigned_admin.username }}</dd>
+                        {% endif %}
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

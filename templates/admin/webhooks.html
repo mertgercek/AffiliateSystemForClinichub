@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Webhooks{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Webhook Management</h2>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createWebhookModal">
+            Create Webhook
+        </button>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            {% if webhooks %}
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>URL</th>
+                            <th>Events</th>
+                            <th>Status</th>
+                            <th>Last Triggered</th>
+                            <th>Failures</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for webhook in webhooks %}
+                        <tr>
+                            <td>{{ webhook.name }}</td>
+                            <td>{{ webhook.url }}</td>
+                            <td>
+                                {% for event in webhook.events %}
+                                <span class="badge bg-info">{{ event }}</span>
+                                {% endfor %}
+                            </td>
+                            <td>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input webhook-toggle" type="checkbox" 
+                                           data-webhook-id="{{ webhook.id }}"
+                                           {{ 'checked' if webhook.is_active }}>
+                                </div>
+                            </td>
+                            <td>
+                                {% if webhook.last_triggered %}
+                                {{ webhook.last_triggered.strftime('%Y-%m-%d %H:%M') }}
+                                {% else %}
+                                Never
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ 'danger' if webhook.failure_count > 0 else 'success' }}">
+                                    {{ webhook.failure_count }}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-info" onclick="viewSecret('{{ webhook.secret }}')">
+                                    View Secret
+                                </button>
+                                <form action="{{ url_for('admin.delete_webhook', id=webhook.id) }}" 
+                                      method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-danger" 
+                                            onclick="return confirm('Are you sure?')">
+                                        Delete
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center text-muted">
+                No webhooks configured. Create your first webhook using the button above.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Create Webhook Modal -->
+<div class="modal fade" id="createWebhookModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Webhook</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('admin.create_webhook') }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">URL</label>
+                        <input type="url" class="form-control" name="url" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Events</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="events" value="referral.created">
+                            <label class="form-check-label">Referral Created</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="events" value="referral.updated">
+                            <label class="form-check-label">Referral Updated</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="events" value="referral.completed">
+                            <label class="form-check-label">Referral Completed</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Webhook</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.webhook-toggle').forEach(toggle => {
+    toggle.addEventListener('change', function() {
+        const webhookId = this.dataset.webhookId;
+        
+        fetch(`/admin/webhook/${webhookId}/toggle`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                this.checked = !this.checked;
+                alert('Error updating webhook status');
+            }
+        });
+    });
+});
+
+function viewSecret(secret) {
+    const modal = new bootstrap.Modal(document.createElement('div'));
+    modal.element.innerHTML = `
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Webhook Secret</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        Keep this secret safe! It's used to verify webhook requests.
+                    </div>
+                    <code>${secret}</code>
+                </div>
+            </div>
+        </div>
+    `;
+    modal.show();
+}
+</script>
+{% endblock %} 

@@ -1,12 +1,13 @@
 from flask import Blueprint, jsonify, request, g, current_app
 from flask_login import current_user
 from functools import wraps
-from models import User, APIKey, Affiliate, Referral, Treatment, TreatmentGroup
+from models import User, APIKey, Affiliate, Referral, Treatment, TreatmentGroup, TreatmentNameMapping
 from extensions import db
 from datetime import datetime, timedelta
 import logging
 import time
 from collections import defaultdict
+from utils import get_client_ip, get_ip_location
 
 bp = Blueprint('api', __name__, url_prefix='/api/v1')
 
@@ -340,4 +341,117 @@ def get_stats():
         return jsonify({
             'error': 'Internal server error',
             'details': 'Could not retrieve statistics. Please try again later'
+        }), 500
+
+@bp.route('/geoip')
+def get_location():
+    ip = get_client_ip(request)
+    location = get_ip_location(ip)
+    if location:
+        return jsonify({
+            'country_code': location['country']
+        })
+    return jsonify({
+        'country_code': 'TR'  # Default to Turkey
+    })
+
+@bp.route('/webhook/treatment-completed', methods=['POST'])
+def treatment_completed_webhook():
+    data = request.get_json()
+    
+    # Validate required fields
+    required_fields = ['email', 'full_name', 'treatment_name']
+    if not all(field in data for field in required_fields):
+        return jsonify({
+            'success': False,
+            'error': 'Missing required fields',
+            'required': required_fields
+        }), 400
+    
+    try:
+        # Find referral by email
+        referral = Referral.query.filter_by(
+            email=data['email'].lower().strip()
+        ).first()
+        
+        if not referral:
+            return jsonify({
+                'success': False,
+                'error': 'No matching referral found',
+                'details': f"No referral found with email: {data['email']}"
+            }), 404
+        
+        # Find treatment mapping by external name
+        mapping = TreatmentNameMapping.query.filter(
+            TreatmentNameMapping.external_name.ilike(data['treatment_name'].strip())
+        ).first()
+        
+        if not mapping:
+            return jsonify({
+                'success': False,
+                'error': 'No matching treatment mapping found',
+                'details': f"No mapping found for treatment: {data['treatment_name']}"
+            }), 404
+            
+        # Update referral's treatment group and commission
+        treatment = Treatment.query.filter_by(
+            group_id=mapping.treatment_group_id,
+            active=True
+        ).first()
+        
+        if not treatment:
+            return jsonify({
+                'success': False,
+                'error': 'No active treatment found in mapped group',
+                'details': 'The mapped treatment group has no active treatments'
+            }), 400
+        
+        # Update referral
+        referral.treatment_id = treatment.id
+        referral.status = 'completed'
+        
+        # Calculate commission based on treatment group
+        commission = float(mapping.treatment_group.commission_amount or 0)
+        referral.commission_amount = commission
+        
+        # Update affiliate earnings
+        referral.affiliate.total_earnings = float(referral.affiliate.total_earnings or 0) + commission
+        
+        # Create/update treatment status
+        if not referral.treatment_status:
+            treatment_status = Treatment_Status(
+                referral_id=referral.id,
+                notes=f"Treatment completed: {data['treatment_name']}"
+            )
+            db.session.add(treatment_status)
+        
+        referral.treatment_status.end_date = datetime.utcnow()
+        referral.treatment_status.outcome = 'success'
+        
+        # Trigger webhook notifications
+        webhook_data = {
+            'id': referral.id,
+            'email': referral.email,
+            'treatment': treatment.name,
+            'commission_amount': commission,
+            'affiliate_id': referral.affiliate_id
+        }
+        trigger_webhook_event('referral.completed', webhook_data, referral.affiliate.user_id)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Referral updated successfully',
+            'referral_id': referral.id,
+            'commission_amount': commission
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error processing treatment completion: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Internal server error',
+            'details': str(e) if current_app.debug else None
         }), 500
